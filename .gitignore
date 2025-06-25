@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Conda
+.env
+.venv/
+venv/
+env/
+*.conda_env/
+
+# Data
+data/raw/
+data/augmented/
+*.csv
+*.parquet
+*.feather
+
+# Logs
+logs/
+*.log
+
+# Secrets
+*.env
+*.key
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+*.ipynb*
+!notebooks/*.ipynb  # Keep only notebooks in /notebooks
+
+# Auto-generated
+*.pkl
+*.model
+*.joblib
