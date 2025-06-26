@@ -8,48 +8,23 @@ load_dotenv()  # Load API keys
 
 def main():
     # Initialize agents
-    planner = PlannerAgent()
     domain_agent = DomainAgent()
     augment_agent = AugmentAgent()
+    # also add eval_agent here
     
-    # Load data (replace with your data source)
+    # 1. get context of table + augment table 
+    # Load data (replace with your data source), simple example need to convert here real table to df aswell
     df = pd.DataFrame({
         "City": ["Berlin", "Tokyo"],
         "Population": [3769000, 13960000]
     })
     context = domain_agent.analyze(df)
     print(f"\nDomain Context: {context}")
-    new_columns = augment_agent.suggest_columns(context, df)
-    print(f"Suggested Columns: {new_columns}")
+    augmented_df = augment_agent.augment_dataframe(context, df, num_suggestions=2)
+    print(augmented_df)
     
-    """
-    # Agentic loop
-    max_iterations = 1
-    for _ in range(max_iterations):
-        # Step 1: Domain analysis
-        context = domain_agent.analyze(df)
-        print(f"\nDomain Context: {context}")
-        
-        # Step 2: Planner decision
-        action = planner.decide_next_action(df, context)
-        print(f"Planner Decision: {action.name}")
-        
-        if action == Action.STOP:
-            break
-        elif action == Action.AUGMENT:
-            # Step 3: Augmentation
-            df, result = augment_agent.augment(df, context)
-            print(f"Augmentation Result: {result}")
-            print("Augmented Table:")
-            print(df.head())
-        elif action == Action.EVALUATE:
-            # (Implement your evaluation logic)
-            print("Evaluation skipped in this demo")
+    # 2. Use eval agent here for simple workflow
 
-    # Final output
-    print("\nFinal DataFrame:")
-    print(df)
-    """
 
 if __name__ == "__main__":
     main()
