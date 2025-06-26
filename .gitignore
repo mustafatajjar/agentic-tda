@@ -16,11 +16,7 @@ env/
 *.conda_env/
 
 # Data
-data/raw/
-data/augmented/
-*.csv
-*.parquet
-*.feather
+data/*
 
 # Logs
 logs/
