@@ -1,4 +1,4 @@
-import googlesearch  # pip install google
+import googlesearch
 from openai import OpenAI
 import os
 from typing import List, Dict
