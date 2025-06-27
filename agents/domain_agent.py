@@ -3,11 +3,6 @@ from openai import OpenAI
 import os
 import pandas as pd
 
-import json
-from openai import OpenAI
-import os
-import pandas as pd
-
 class DomainAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
