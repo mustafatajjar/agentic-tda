@@ -32,6 +32,9 @@ def load_arff_to_dataframe(file_path):
 
 
 def evaluate(table):
+    threshold = table.loc[table['binaryClass'] == 1, 'median_house_value'].min()
+    print(threshold)          # likely the exact cut‑off used to create the label
+    print((table['median_house_value'] > threshold).eq(table['binaryClass']).mean())
     label = "binaryClass"
     train_data = table.copy()
 
@@ -45,13 +48,13 @@ def evaluate(table):
     )
 
     # --- Evaluate ---
-    oof_proba = predictor.predict_proba_oof()  # DataFrame, one column per class
+    oof_proba = predictor.predict_proba_oof()
     y_true = train_data[label].to_numpy()
-    y_score = oof_proba.iloc[:, 1].to_numpy()  # class 1 probabilities
+    y_score = oof_proba[predictor.positive_class].to_numpy()
 
     score = roc_auc_score(y_true, y_score)
     print(f"OOF ROC-AUC = {score:.4f}")
-    
+
     # # preprocess data
     # X = table.drop(columns=["binaryClass"])
     # y = table["binaryClass"]
