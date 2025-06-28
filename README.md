@@ -2,7 +2,7 @@
 
 ## Setup Instructions
 
-### 1. Create a Conda Environment (Python 3.13.3)
+### 1. Create a Conda Environment (Python 3.11)
 
 ```bash
 conda create -n agentic-tda python=3.11
