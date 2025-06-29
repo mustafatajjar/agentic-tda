@@ -33,7 +33,7 @@ def main():
     
     #2.  Initialize agents
     domain_agent = DomainAgent()
-    #augment_agent = AugmentAgent()
+    augment_agent = AugmentAgent()
     
     #3. get context of table + augment table 
     context = domain_agent.analyze(df, arff_metadata=metadata)
@@ -42,14 +42,14 @@ def main():
     
     
     # TODO: need to finish augment properly + planner agent
-    '''
-    augmented_df = augment_agent.augment_dataframe(
-        domain_context=context,
-        df=df,
-        num_suggestions=3
+    
+    augmented_df = augment_agent.add_column(
+        df,
+        domain_context=context
     )
-    
-    
+    print("Augmented DataFrame:")
+    print(augmented_df.head())
+    '''
     # 4. Use eval agent here for simple workflow
     '''
 if __name__ == "__main__":
