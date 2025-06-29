@@ -3,6 +3,8 @@ from autogluon.core.models import BaggedEnsembleModel
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from autogluon.tabular import TabularPredictor
 import pandas as pd
+pd.set_option('mode.use_inf_as_na', True)
+import numpy as np
 from scipy.io import arff
 from sklearn.metrics import roc_auc_score
 from tabrepo.benchmark.models.ag.realmlp.realmlp_model import RealMLPModel
@@ -32,10 +34,8 @@ def load_arff_to_dataframe(file_path):
 
 
 def evaluate(table):
-    threshold = table.loc[table['binaryClass'] == 1, 'median_house_value'].min()
-    print(threshold)          # likely the exact cut‑off used to create the label
-    print((table['median_house_value'] > threshold).eq(table['binaryClass']).mean())
-    label = "binaryClass"
+    table = table.fillna(0)
+    label = "class"
     train_data = table.copy()
 
     # --- Train ---
@@ -54,6 +54,8 @@ def evaluate(table):
 
     score = roc_auc_score(y_true, y_score)
     print(f"OOF ROC-AUC = {score:.4f}")
+    
+    return score
 
     # # preprocess data
     # X = table.drop(columns=["binaryClass"])
