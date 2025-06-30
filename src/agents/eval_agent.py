@@ -2,35 +2,13 @@ from autogluon.core.data import LabelCleaner
 from autogluon.core.models import BaggedEnsembleModel
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 from autogluon.tabular import TabularPredictor
-import pandas as pd
-pd.set_option('mode.use_inf_as_na', True)
 import numpy as np
+import pandas as pd
+
+pd.set_option("mode.use_inf_as_na", True)
 from scipy.io import arff
 from sklearn.metrics import roc_auc_score
 from tabrepo.benchmark.models.ag.realmlp.realmlp_model import RealMLPModel
-
-
-def load_arff_to_dataframe(file_path):
-    """
-    Load ARFF file into pandas DataFrame
-
-    Parameters:
-    - file_path: path to the ARFF file
-
-    Returns:
-    - pandas DataFrame
-    """
-    data, _ = arff.loadarff(file_path)
-    df = pd.DataFrame(data)
-
-    # Decode byte strings to regular strings if needed
-    str_df = df.select_dtypes([object])
-    str_df = str_df.stack().str.decode("utf-8").unstack()
-
-    for col in str_df:
-        df[col] = str_df[col]
-
-    return df
 
 
 def evaluate(table):
@@ -39,13 +17,9 @@ def evaluate(table):
     train_data = table.copy()
 
     # --- Train ---
-    predictor = TabularPredictor(label=label, problem_type="binary", eval_metric="roc_auc").fit(
-        train_data=train_data,
-        num_bag_folds=5,
-        hyperparameters={
-            'RF': {}
-        }
-    )
+    predictor = TabularPredictor(
+        label=label, problem_type="binary", eval_metric="roc_auc"
+    ).fit(train_data=train_data, num_bag_folds=5, hyperparameters={"RF": {}})
 
     # --- Evaluate ---
     oof_proba = predictor.predict_proba_oof()
@@ -54,32 +28,8 @@ def evaluate(table):
 
     score = roc_auc_score(y_true, y_score)
     print(f"OOF ROC-AUC = {score:.4f}")
-    
+
     return score
-
-    # # preprocess data
-    # X = table.drop(columns=["binaryClass"])
-    # y = table["binaryClass"]
-
-    # # feature transformation, probably will be substituted later
-    # # --- 1. Automatic preprocessing ---
-    # feature_gen = AutoMLPipelineFeatureGenerator()
-    # X = feature_gen.fit_transform(X)
-
-    # # --- 2. Clean / encode label ---
-    # label_cleaner = LabelCleaner.construct(problem_type="binary", y=y)
-    # y = label_cleaner.transform(y)
-
-    # # evaluate dataset
-    # model = BaggedEnsembleModel(
-    #     model_base=RealMLPModel
-    # )
-    # model.fit(X=X, y=y, num_bag_folds=1)
-    # oof_proba = model.predict_proba_oof()
-    # bagged_score = roc_auc_score(y, oof_proba)
-    # print(
-    #     f"Test score ({model.eval_metric.name}) = {bagged_score} (bagged)"
-    # )
 
 
 ''' Implementation Suggestion:

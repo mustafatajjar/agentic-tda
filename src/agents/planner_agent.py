@@ -2,16 +2,18 @@ from enum import Enum, auto
 import os
 from openai import OpenAI
 
+
 class Action(Enum):
     AUGMENT = auto()
     EVALUATE = auto()
     STOP = auto()
 
+
 class PlannerAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.history = []
-    
+
     def decide_next_action(self, df, context: dict) -> Action:
         """Dynamic decision-making with LLM"""
         prompt = f"""
@@ -29,7 +31,7 @@ class PlannerAgent:
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
+            temperature=0.1,
         )
         decision = response.choices[0].message.content.strip().upper()
         self.history.append(decision)

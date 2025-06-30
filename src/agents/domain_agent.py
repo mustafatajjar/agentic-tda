@@ -13,8 +13,8 @@ class DomainAgent:
     def analyze(self, df: pd.DataFrame, arff_metadata: str = "") -> dict:
         summary_df = summarize_dataframe(df)
         summary_dict = summary_df.reset_index()
-        summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient='records')
-        sample_row = df.sample(1).to_dict(orient='records')[0]
+        summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient="records")
+        sample_row = df.sample(1).to_dict(orient="records")[0]
 
         prompt = f"""
         You are a domain analysis assistant. Use the following ARFF file metadata and table summary
@@ -39,6 +39,6 @@ class DomainAgent:
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
-        return json.loads(response.choices[0].message.content)  
+        return json.loads(response.choices[0].message.content)
