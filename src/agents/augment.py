@@ -1,10 +1,14 @@
+from dotenv import load_dotenv
 import googlesearch
+import json
 from openai import OpenAI
 import os
-import pandas as pd
-import numpy as np
 from typing import List, Dict, Union
-import json
+
+import numpy as np
+import pandas as pd
+
+load_dotenv()
 
 
 class AugmentAgent:
@@ -87,11 +91,11 @@ class AugmentAgent:
             print(f"Failed to add column '{suggestion.get('name', '')}': {str(e)}")
             return df
 
-    def add_column_modes(
+    def get_augmentation(
         self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
-    ) -> pd.DataFrame:
+    ) -> dict:
         """
-        Adds one meaningful new column to the DataFrame based on domain context.
+        Computes an augmentation, chosen from Mapping and Binning
 
         Args:
             df: Original DataFrame
@@ -99,7 +103,7 @@ class AugmentAgent:
             augmentation_goal: Optional specific goal for the augmentation
 
         Returns:
-            DataFrame with one new column added
+            Augmentation as JSON object from LLM
         """
         sample_row = df.sample(1).to_dict(orient="records")[0]
 
@@ -111,7 +115,18 @@ class AugmentAgent:
 
         prompt = f"""
         You are a data augmentation assistant. Based on the following domain context and sample data,
-        suggest ONE meaningful new column that could be derived or calculated from the existing data.
+        suggest ONE meaningful augmentation that can be derived from the existing data.
+        You are free to add external knowledge that you are sure about.
+        Use one of the following two augmentations:
+
+        Binning:
+        replace numerical values by the mean value the interval, the size of which is bin_size
+        input_columns should be a list of one column, the column to bin, the output_column is the column to include
+
+        Mapping:
+        return a dictionary, that maps from the values of the column values to a corresponding value
+        input_columns should be a list of the input columns, unique values will be sent back for another query
+
 
         === DOMAIN CONTEXT ===
         Primary Domain: {domain_context.get('primary_domain', 'Unknown')}
@@ -123,13 +138,12 @@ class AugmentAgent:
         {augmentation_section}
 
         Provide:
-        1. "name": The column name (make it clear and descriptive)
-        2. "description": What the column represents
-        3. "generation_method": A SINGLE pandas operation to create it
-                            (must work when applied to the entire DataFrame)
-        4. "value_example": Example value based on the sample row
+        1. "method": Choose one out of "Binning" and "Mapping" (str)
+        2. "input_columns": List of input columns (list[str])
+        3. "output_column": Name of the new column (str)
+        4. "bin_size": Size of a bin in case of binning (float)
 
-        Return a JSON object with these four elements.
+        Return a JSON object with these five elements.
         """
 
         response = self.client.chat.completions.create(
@@ -139,26 +153,30 @@ class AugmentAgent:
         )
 
         suggestion = json.loads(response.choices[0].message.content)
+        if suggestion["method"] == "Binning":
+            return suggestion
 
-        # Apply the augmentation
-        try:
-            # Create a copy to avoid modifying the original
-            augmented_df = df.copy()
-            # Execute the generation method
-            exec_globals = {
-                "df": augmented_df,
-                "np": np,
-                "pd": pd,
-                "__builtins__": {  # Only allow safe built-ins
-                    "int": int,
-                    "float": float,
-                    "range": range,
-                    "list": list,
-                    "dict": dict,
-                },
-            }
-            exec(suggestion["generation_method"], exec_globals)
-            return augmented_df
-        except Exception as e:
-            print(f"Failed to add column '{suggestion.get('name', '')}': {str(e)}")
-            return df
+    def make_augmentation(self, df: pd.DataFrame, augmentation: dict) -> pd.DataFrame:
+        method = augmentation["method"]
+        bin_size = augmentation["bin_size"]
+        input_columns = augmentation["input_columns"]
+        output_column = augmentation["output_column"]
+        if method == "Binning":
+            if len(input_columns) != 1:
+                print("Invalid amount of columns specified for binning. No changes made.")
+                return df
+            column = input_columns[0]
+            values = df[column]
+
+            num_bins = int(np.ceil((np.max(values) - np.min(values)) / bin_size)) + 1
+            bins = np.linspace(np.min(values), np.max(values), num_bins)
+            df[output_column] = pd.cut(df[column], bins=bins, include_lowest=True)
+            intervals = df[output_column].cat.categories
+            midpoints = intervals.left + (intervals.right - intervals.left) / 2
+            interval_to_mid = dict(zip(intervals, midpoints))
+            df[output_column] = df[output_column].map(interval_to_mid)
+        elif method == "Mapping":
+            pass
+        else:
+            print("Invalid augmentation specified. No changes made.")
+        return df
