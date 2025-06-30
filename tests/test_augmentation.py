@@ -20,5 +20,31 @@ def test_binning():
     df = aa.make_augmentation(df, augmentation)
     print("Augmented DataFrame:", df)
 
+
+def test_mapping():
+    aa = AugmentAgent()
+    df = pd.DataFrame({
+        "city": ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Chicago", "Houston"],
+        "population": [8_336_817, 3_979_576, 2_693_976, 2_320_268, 1_680_992, 2_700_000, 2_300_000]
+    })
+    mapping = {
+        ("New York",): "NY",
+        ("Los Angeles",): "CA",
+        ("Chicago",): "IL",
+        ("Houston",): "TX",
+        ("Phoenix",): "AZ",
+    }
+    augmentation = {
+        "method": "Mapping",
+        "input_columns": ["city"],
+        "output_column": "state",
+        "bin_size": 0,
+        "mapping": mapping
+    }
+    print("Original DataFrame:", df)
+    df = aa.make_augmentation(df, augmentation)
+    print("Augmented DataFrame:", df)
+
 if __name__ == "__main__":
     test_binning()
+    test_mapping()

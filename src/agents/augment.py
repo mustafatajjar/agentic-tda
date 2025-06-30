@@ -176,7 +176,13 @@ class AugmentAgent:
             interval_to_mid = dict(zip(intervals, midpoints))
             df[output_column] = df[output_column].map(interval_to_mid)
         elif method == "Mapping":
-            pass
+            mapping = augmentation["mapping"]
+            map_ser = pd.Series(mapping)
+            map_ser.index = pd.MultiIndex.from_tuples(map_ser.index, names=input_columns)
+
+            tuples = pd.MultiIndex.from_frame(df[input_columns])
+
+            df[output_column] = map_ser.reindex(tuples).values
         else:
             print("Invalid augmentation specified. No changes made.")
         return df
