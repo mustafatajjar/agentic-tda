@@ -45,3 +45,6 @@ Thumbs.db
 *.pkl
 *.model
 *.joblib
+
+# Repositories
+tabrepo
