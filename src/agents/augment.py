@@ -137,6 +137,8 @@ class AugmentAgent:
         Make sure there are not more than 10000 combinations of these column values in the table
         input_columns should be a list of the input columns, unique values will be sent back for another query
 
+        In this case, for testing purposes, use Mapping, you can also use several columns to deduce something.
+        E.g. (living space = 200m^2, city = munich) -> rent = high
 
         === DOMAIN CONTEXT ===
         Primary Domain: {domain_context.get('primary_domain', 'Unknown')}
@@ -163,19 +165,19 @@ class AugmentAgent:
         )
 
         suggestion = json.loads(response.choices[0].message.content)
-
-        if suggestion["method"] == "Binning":
+        method = suggestion["method"]
+        if method == "Binning":
             return suggestion
-        elif suggestion["method"] == "Mapping":
+        elif method == "Mapping":
             # Compute a dictionary with unique values for the chosen columns
             columns = suggestion["input_columns"]
             unique_values = dict()
             for column in columns:
-                unique_values[column] = df[column].unique()
+                unique_values[column] = df[column].unique().tolist()
 
             prompt = f"""
             The following are the unique values for the respective row.
-            Provide:
+            Please provide a json object containing the following:
             1. "output_column": Name of the new column (str)
             2. "mapping": A dictionary, that maps from a tuple of column values to a new value
                             (tuple[value] -> value)
@@ -189,6 +191,7 @@ class AugmentAgent:
             )
             suggestion = json.loads(response.choices[0].message.content)
             suggestion["input_columns"] = columns
+            suggestion["method"] = method
             return suggestion
 
     def make_augmentation(self, df: pd.DataFrame, augmentation: dict) -> pd.DataFrame:
@@ -214,6 +217,7 @@ class AugmentAgent:
             interval_to_mid = dict(zip(intervals, midpoints))
             df[output_column] = df[output_column].map(interval_to_mid)
         elif method == "Mapping":
+            print(input_columns)
             mapping = augmentation["mapping"]
             map_ser = pd.Series(mapping)
             map_ser.index = pd.MultiIndex.from_tuples(
