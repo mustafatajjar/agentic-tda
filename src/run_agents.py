@@ -1,11 +1,11 @@
 import pandas as pd
 from dotenv import load_dotenv
 
-from agents.planner_agent import PlannerAgent, Action
-from agents.domain_agent import DomainAgent
-from agents.augment import AugmentAgent
-from agents.eval_agent import evaluate
-from utils import arff_to_dataframe, extract_arff_metadata
+from src.agents.planner_agent import PlannerAgent, Action
+from src.agents.domain_agent import DomainAgent
+from src.agents.augment import AugmentAgent
+from src.agents.eval_agent import evaluate
+from src.utils import arff_to_dataframe, extract_arff_metadata
 
 load_dotenv()  # Load API keys
 

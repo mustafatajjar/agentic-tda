@@ -2,7 +2,7 @@ import json
 from openai import OpenAI
 import os
 import pandas as pd
-from utils import summarize_dataframe
+from src.utils import summarize_dataframe
 
 
 # --------- Agent ---------

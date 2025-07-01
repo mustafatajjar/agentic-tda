@@ -1,5 +1,6 @@
+import arff
 import pandas as pd
-from scipy.io import arff
+from scipy.io import arff as sparff
 
 
 def summarize_dataframe(df):
@@ -31,7 +32,7 @@ def load_arff_to_dataframe(file_path):
     Returns:
     - pandas DataFrame
     """
-    data, _ = arff.loadarff(file_path)
+    data, _ = sparff.loadarff(file_path)
     df = pd.DataFrame(data)
 
     # Decode byte strings to regular strings if needed

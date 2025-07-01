@@ -21,7 +21,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
 
 from src.agents.eval_agent import *
-from utils import load_arff_to_dataframe
+from src.utils import load_arff_to_dataframe
 
 
 def main():
