@@ -35,7 +35,7 @@ def main():
         print(context)
 
         # TODO: need to finish augment properly + planner agent
-        augmented_df = augment_agent.add_column(df, domain_context=context)
+        augmented_df = augment_agent.mapping_binning_augment(df.copy(), domain_context=context)
         print("Current DataFrame:")
         print(df.head())
         print("Augmented DataFrame:")
@@ -46,7 +46,7 @@ def main():
         print("Original evaluation:", original_eval)
         print("Augmented evaluation:", augmented_eval)
 
-        df = augmented_df
+        df = augmented_df.copy()
         i += 1
 
 

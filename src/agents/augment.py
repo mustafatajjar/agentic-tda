@@ -91,6 +91,15 @@ class AugmentAgent:
             print(f"Failed to add column '{suggestion.get('name', '')}': {str(e)}")
             return df
 
+    def mapping_binning_augment(
+        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
+    ) -> pd.DataFrame:
+        augmentation = self.get_augmentation(
+            df=df, domain_context=domain_context, augmentation_goal=augmentation_goal
+        )
+        augmented_df = self.make_augmentation(df=df, augmentation=augmentation)
+        return augmented_df
+
     def get_augmentation(
         self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
     ) -> dict:
@@ -124,7 +133,8 @@ class AugmentAgent:
         input_columns should be a list of one column, the column to bin, the output_column is the column to include
 
         Mapping:
-        return a dictionary, that maps from the values of the column values to a corresponding value
+        return the columns to make a mapping for
+        Make sure there are not more than 10000 combinations of these column values in the table
         input_columns should be a list of the input columns, unique values will be sent back for another query
 
 
@@ -143,7 +153,7 @@ class AugmentAgent:
         3. "output_column": Name of the new column (str)
         4. "bin_size": Size of a bin in case of binning (float)
 
-        Return a JSON object with these five elements.
+        Return a JSON object with these four elements.
         """
 
         response = self.client.chat.completions.create(
@@ -153,17 +163,45 @@ class AugmentAgent:
         )
 
         suggestion = json.loads(response.choices[0].message.content)
+
         if suggestion["method"] == "Binning":
+            return suggestion
+        elif suggestion["method"] == "Mapping":
+            # Compute a dictionary with unique values for the chosen columns
+            columns = suggestion["input_columns"]
+            unique_values = dict()
+            for column in columns:
+                unique_values[column] = df[column].unique()
+
+            prompt = f"""
+            The following are the unique values for the respective row.
+            Provide:
+            1. "output_column": Name of the new column (str)
+            2. "mapping": A dictionary, that maps from a tuple of column values to a new value
+                            (tuple[value] -> value)
+            {json.dumps(unique_values, indent=2)}
+            """
+
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+            )
+            suggestion = json.loads(response.choices[0].message.content)
+            suggestion["input_columns"] = columns
             return suggestion
 
     def make_augmentation(self, df: pd.DataFrame, augmentation: dict) -> pd.DataFrame:
+        print(augmentation)
         method = augmentation["method"]
-        bin_size = augmentation["bin_size"]
         input_columns = augmentation["input_columns"]
         output_column = augmentation["output_column"]
         if method == "Binning":
+            bin_size = augmentation["bin_size"]
             if len(input_columns) != 1:
-                print("Invalid amount of columns specified for binning. No changes made.")
+                print(
+                    "Invalid amount of columns specified for binning. No changes made."
+                )
                 return df
             column = input_columns[0]
             values = df[column]
@@ -178,7 +216,9 @@ class AugmentAgent:
         elif method == "Mapping":
             mapping = augmentation["mapping"]
             map_ser = pd.Series(mapping)
-            map_ser.index = pd.MultiIndex.from_tuples(map_ser.index, names=input_columns)
+            map_ser.index = pd.MultiIndex.from_tuples(
+                map_ser.index, names=input_columns
+            )
 
             tuples = pd.MultiIndex.from_frame(df[input_columns])
 

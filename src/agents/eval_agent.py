@@ -12,7 +12,8 @@ from tabrepo.benchmark.models.ag.realmlp.realmlp_model import RealMLPModel
 
 
 def evaluate(table):
-    table = table.fillna(0)
+    numeric_cols = table.select_dtypes(exclude='category').columns
+    table[numeric_cols] = table[numeric_cols].fillna(0)
     label = "class"
     train_data = table.copy()
 
