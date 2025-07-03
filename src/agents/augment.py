@@ -123,39 +123,32 @@ class AugmentAgent:
         )
 
         prompt = f"""
-        You are a data augmentation assistant. Based on the following domain context and sample data,
-        suggest ONE meaningful augmentation that can be derived from the existing data.
-        You are free to add external knowledge that you are sure about.
-        Use one of the following two augmentations:
+        You are a data augmentation assistant. Given a dataset and domain context, your task is to suggest one meaningful new column
+        that can be derived by applying a transformation to one or more existing columns.
 
-        Binning:
-        replace numerical values by the mean value the interval, the size of which is bin_size
-        input_columns should be a list of one column, the column to bin, the output_column is the column to include
+        There are two transformation types:
+        - "Mapping": Combine categorical input columns into a new categorical value.
+        - "Binning": Group numerical values into bins and replace with the mean of the bin.
 
-        Mapping:
-        return the columns to make a mapping for
-        Make sure there are not more than 10000 combinations of these column values in the table
-        input_columns should be a list of the input columns, unique values will be sent back for another query
-
-        In this case, for testing purposes, use Mapping, you can also use several columns to deduce something.
-        E.g. (living space = 200m^2, city = munich) -> rent = high
+        Rules:
+        - For Mapping: Choose 1 or 2 categorical input columns with <= 10000 value combinations.
+        - The output_column must be a new, descriptive column name.
 
         === DOMAIN CONTEXT ===
-        Primary Domain: {domain_context.get('primary_domain', 'Unknown')}
-        Column Descriptions: {json.dumps(domain_context.get('column_descriptions', {}), indent=2)}
+        Primary Domain: {domain_context.get("primary_domain", "Unknown")}
+        Column Descriptions:
+        {json.dumps(domain_context.get("column_descriptions", {}), indent=2)}
 
         === SAMPLE ROW ===
         {json.dumps(sample_row, indent=2)}
 
-        {augmentation_section}
-
-        Provide:
-        1. "method": Choose one out of "Binning" and "Mapping" (str)
-        2. "input_columns": List of input columns (list[str])
-        3. "output_column": Name of the new column (str)
-        4. "bin_size": Size of a bin in case of binning (float)
-
-        Return a JSON object with these four elements.
+        Respond with a JSON object:
+        {{
+        "method": "Mapping",
+        "input_columns": ["col1", "col2", ...],
+        "output_column": "name_of_new_column",
+        "bin_size": null  // leave null for Mapping
+        }}
         """
 
         response = self.client.chat.completions.create(
@@ -176,12 +169,45 @@ class AugmentAgent:
                 unique_values[column] = df[column].unique().tolist()
 
             prompt = f"""
-            The following are the unique values for the respective row.
-            Please provide a json object containing the following:
-            1. "output_column": Name of the new column (str)
-            2. "mapping": A dictionary, that maps from a tuple of column values to a new value
-                            (tuple[value] -> value)
+            You are a data‑augmentation assistant.  
+            Given a set of input columns and *every* combination of their unique values,
+            create a mapping that assigns a descriptive category to **each** combination.
+
+            ### Requirements
+            1. Cover **every combination** shown in “UNIQUE VALUE COMBINATIONS”.
+            2. The response **must be valid JSON** (no Markdown fences, no comments).
+            3. Use this exact schema:
+
+            {{
+            "output_column": "name_of_new_column",
+            "mapping": [
+                {{
+                "inputs": ["val_for_col1", "val_for_col2", ...],  // same order as input_columns
+                "value":   "derived_category"                     // a string label
+                }},
+                ...
+            ]
+            }}
+
+            ### Example
+            If `input_columns = ["color", "size"]` and the combinations are  
+            `[["red", "small"], ["blue", "large"]]`, a valid response is:
+
+            {{
+            "output_column": "color_size_category",
+            "mapping": [
+                {{ "inputs": ["red",  "small"], "value": "category1" }},
+                {{ "inputs": ["blue", "large"], "value": "category2" }}
+            ]
+            }}
+
+            ### INPUT COLUMNS
+            {json.dumps(columns)}
+
+            ### UNIQUE VALUE COMBINATIONS
             {json.dumps(unique_values, indent=2)}
+
+            Return **only** the JSON object that follows the schema above.
             """
 
             response = self.client.chat.completions.create(
@@ -192,9 +218,13 @@ class AugmentAgent:
             suggestion = json.loads(response.choices[0].message.content)
             suggestion["input_columns"] = columns
             suggestion["method"] = method
+            mapping = suggestion["mapping"]
+            mapping = {tuple(item["inputs"]): item["value"] for item in mapping}
+            suggestion["mapping"] = mapping
             return suggestion
 
     def make_augmentation(self, df: pd.DataFrame, augmentation: dict) -> pd.DataFrame:
+        print("AUGMENTATION")
         print(augmentation)
         method = augmentation["method"]
         input_columns = augmentation["input_columns"]
@@ -217,8 +247,11 @@ class AugmentAgent:
             interval_to_mid = dict(zip(intervals, midpoints))
             df[output_column] = df[output_column].map(interval_to_mid)
         elif method == "Mapping":
+            print("INPUT COLUMNS")
             print(input_columns)
             mapping = augmentation["mapping"]
+            print("MAPPING")
+            print(mapping)
             map_ser = pd.Series(mapping)
             map_ser.index = pd.MultiIndex.from_tuples(
                 map_ser.index, names=input_columns

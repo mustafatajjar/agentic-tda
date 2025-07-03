@@ -12,7 +12,7 @@ load_dotenv()  # Load API keys
 
 def main():
     # 1.  load data set here
-    arff_file_path = "./data/dataset_37_diabetes.arff"
+    arff_file_path = "./data/dataset_31_credit-g.arff"
 
     metadata = extract_arff_metadata(arff_file_path)
     df = arff_to_dataframe(arff_file_path)
