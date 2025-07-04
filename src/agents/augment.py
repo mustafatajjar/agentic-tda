@@ -7,6 +7,7 @@ from typing import List, Dict, Union
 
 import numpy as np
 import pandas as pd
+from typing import Tuple
 
 load_dotenv()
 
@@ -17,7 +18,7 @@ class AugmentAgent:
 
     def add_column(
         self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
-    ) -> pd.DataFrame:
+    ) -> Tuple[pd.DataFrame, str, dict]:
         """
         Adds one meaningful new column to the DataFrame based on domain context.
         """
@@ -72,10 +73,10 @@ class AugmentAgent:
                 },
             }
             exec(suggestion["generation_method"], exec_globals)
-            return augmented_df
+            return augmented_df, prompt, suggestion
         except Exception as e:
             print(f"Failed to add column '{suggestion.get('name', '')}': {str(e)}")
-            return df
+            return df, prompt, suggestion
 
     def mapping_binning_augment(
         self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
@@ -155,7 +156,7 @@ class AugmentAgent:
                 unique_values[column] = df[column].unique().tolist()
 
             prompt = f"""
-            You are a data‑augmentation assistant.  
+            You are a data‑augmentation assistant.
             Given a set of input columns and *every* combination of their unique values,
             create a mapping that assigns a descriptive category to **each** combination.
 

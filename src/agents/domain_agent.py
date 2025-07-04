@@ -2,6 +2,8 @@ import json
 from openai import OpenAI
 import os
 import pandas as pd
+from typing import Tuple
+
 from src.utils import summarize_dataframe
 
 
@@ -10,7 +12,7 @@ class DomainAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    def analyze(self, df: pd.DataFrame, arff_metadata: str = "") -> dict:
+    def analyze(self, df: pd.DataFrame, arff_metadata: str = "") -> Tuple[dict, str]:
         summary_df = summarize_dataframe(df)
         summary_dict = summary_df.reset_index()
         summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient="records")
@@ -41,4 +43,4 @@ class DomainAgent:
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )
-        return json.loads(response.choices[0].message.content)
+        return json.loads(response.choices[0].message.content), prompt
