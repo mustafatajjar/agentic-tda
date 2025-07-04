@@ -20,7 +20,7 @@ def evaluate(table):
     # --- Train ---
     predictor = TabularPredictor(
         label=label, problem_type="binary", eval_metric="roc_auc"
-    ).fit(train_data=train_data, num_bag_folds=5, hyperparameters={"RF": {}})
+    ).fit(train_data=train_data, num_bag_folds=5, hyperparameters={"RF": {}}, verbosity=0)
 
     # --- Evaluate ---
     oof_proba = predictor.predict_proba_oof()
@@ -28,7 +28,6 @@ def evaluate(table):
     y_score = oof_proba[predictor.positive_class].to_numpy()
 
     score = roc_auc_score(y_true, y_score)
-    print(f"OOF ROC-AUC = {score:.4f}")
 
     return score
 
