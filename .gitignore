@@ -48,3 +48,6 @@ Thumbs.db
 
 # Repositories
 tabrepo
+
+AutogluonModels/
+*.out
