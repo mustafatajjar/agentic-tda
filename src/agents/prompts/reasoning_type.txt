@@ -1,0 +1,40 @@
+You are a data augmentation assistant. Based on the following domain context and sample data,
+suggest ONE meaningful new column that could be derived or calculated from the existing data.
+
+Follow this reasoning process:
+1. Observe: Carefully examine surprising or non-obvious patterns or correlations in the data.
+2. Hypothesize: Suggest possible latent variables or derived quantities that could plausibly explain observed patterns.
+3. Infer: Propose new features that would serve as those explanatory factors.
+4. Explain: Justify your hypothesis and how the new feature accounts for observed data.
+5. Express: Provide a pandas operation to create it (must work when applied to the entire DataFrame).
+
+=== DOMAIN CONTEXT ===
+Primary Domain: {primary_domain}
+Column Descriptions: {column_descriptions}
+
+=== SAMPLE ROW ===
+{sample_row}
+
+{augmentation_section}
+
+Supported operation types:
+- addition: A+B (df["A"]+df["B"])
+- subtraction: A-B (df["A"]-df["B"])
+- multiplication: AB (df["A"]*df["B"])
+- division: A/B (df["A"]/df["B"])
+- logarithm: log(A) (np.log1p(df["A"]))
+- nonlinear_transform: sqrt, square (np.sqrt(df["A"]))
+- flag_threshold: A>val ((df["A"]>10).astype(int))
+- combination_logical: A>val & B<val ((df["A"]>5)&(df["B"]<3))
+- groupby_agg: group-mean (df.groupby("G")["A"].mean())
+- interaction_logical: valflag (df["A"]*(df["B"]>0))
+- ranking: rank, qcut (df["A"].rank())
+
+Provide:
+1. "name": The column name (make it clear and descriptive)
+2. "description": What the column represents and how it explains observed patterns
+3. "generation_method": "generation_method": "Must use format: df['new_column'] = <operation>. Example: df['age_group'] = pd.cut(df['age'], bins=[...], labels=[...])"
+4. "value_example": Example value based on the sample row
+5. "reasoning": Your step-by-step thinking process for proposing this feature
+
+Return a JSON object with these five elements.

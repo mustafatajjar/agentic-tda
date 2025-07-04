@@ -20,15 +20,12 @@ class AugmentAgent:
     ) -> pd.DataFrame:
         """
         Adds one meaningful new column to the DataFrame based on domain context.
-
-        Args:
-            df: Original DataFrame
-            domain_context: Output from DomainAgent.analyze()
-            augmentation_goal: Optional specific goal for the augmentation
-
-        Returns:
-            DataFrame with one new column added
         """
+        # Load prompt from file
+        prompt_path = os.path.join(os.path.dirname(__file__), 'prompts', 'reasoning_type.txt')
+        with open(prompt_path, 'r') as file:
+            prompt_template = file.read()
+        
         sample_row = df.sample(1).to_dict(orient="records")[0]
 
         augmentation_section = (
@@ -37,28 +34,13 @@ class AugmentAgent:
             else ""
         )
 
-        prompt = f"""
-        You are a data augmentation assistant. Based on the following domain context and sample data,
-        suggest ONE meaningful new column that could be derived or calculated from the existing data.
-
-        === DOMAIN CONTEXT ===
-        Primary Domain: {domain_context.get('primary_domain', 'Unknown')}
-        Column Descriptions: {json.dumps(domain_context.get('column_descriptions', {}), indent=2)}
-
-        === SAMPLE ROW ===
-        {json.dumps(sample_row, indent=2)}
-
-        {augmentation_section}
-
-        Provide:
-        1. "name": The column name (make it clear and descriptive)
-        2. "description": What the column represents
-        3. "generation_method": A SINGLE pandas operation to create it
-                            (must work when applied to the entire DataFrame)
-        4. "value_example": Example value based on the sample row
-
-        Return a JSON object with these four elements.
-        """
+        # Format the prompt with actual values
+        prompt = prompt_template.format(
+            primary_domain=domain_context.get('primary_domain', 'Unknown'),
+            column_descriptions=json.dumps(domain_context.get('column_descriptions', {}), indent=2),
+            sample_row=json.dumps(sample_row, indent=2),
+            augmentation_section=augmentation_section
+        )
 
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -67,17 +49,22 @@ class AugmentAgent:
         )
 
         suggestion = json.loads(response.choices[0].message.content)
-
-        # Apply the augmentation
+        
+        print("\nGPT Suggestion:")
+        print(json.dumps(suggestion, indent=2))
+        print(f"\nGeneration method to execute: {suggestion['generation_method']}")
+        
+        # Rest of your method remains exactly the same...
         try:
-            # Create a copy to avoid modifying the original
             augmented_df = df.copy()
-            # Execute the generation method
+            if suggestion["name"] in augmented_df.columns:
+                print(f"Column '{suggestion['name']}' already exists - skipping")
+                return augmented_df
             exec_globals = {
                 "df": augmented_df,
                 "np": np,
                 "pd": pd,
-                "__builtins__": {  # Only allow safe built-ins
+                "__builtins__": {
                     "int": int,
                     "float": float,
                     "range": range,

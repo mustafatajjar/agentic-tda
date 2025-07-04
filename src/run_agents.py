@@ -35,7 +35,8 @@ def main():
         print(context)
 
         # TODO: need to finish augment properly + planner agent
-        augmented_df = augment_agent.mapping_binning_augment(df.copy(), domain_context=context)
+        #augmented_df = augment_agent.mapping_binning_augment(df.copy(), domain_context=context)
+        augmented_df = augment_agent.add_column(df.copy, domain_context=context)
         print("Current DataFrame:")
         print(df.head())
         print("Augmented DataFrame:")
