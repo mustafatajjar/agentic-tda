@@ -54,7 +54,6 @@ class AugmentAgent:
         print(json.dumps(suggestion, indent=2))
         print(f"\nGeneration method to execute: {suggestion['generation_method']}")
         
-        # Rest of your method remains exactly the same...
         try:
             augmented_df = df.copy()
             if suggestion["name"] in augmented_df.columns:
