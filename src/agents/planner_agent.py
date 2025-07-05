@@ -13,13 +13,22 @@ class PlannerAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.history = []
+        self.last_improved = (
+            True  # flag to store if the performance did not improve last step
+        )
 
     def decide_next_action(self, df, context: dict) -> Action:
         """Dynamic decision-making with LLM"""
+        last_aug_improved_notice = (
+            "Last iteration, the augmentation did not lead to improvement!"
+            if not self.last_improved
+            else ""
+        )
         prompt = f"""
         **Table State**: Columns={df.columns.tolist()}
         **Domain Context**: {context}
         **Action History**: {self.history[-3:] if self.history else "None"}
+        {last_aug_improved_notice}
         
         Choose:
         - AUGMENT: If context suggests valuable additions

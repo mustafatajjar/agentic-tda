@@ -1,7 +1,6 @@
 from datetime import datetime
 from dotenv import load_dotenv
 import pandas as pd
-import os
 
 from src.agents.planner_agent import PlannerAgent, Action
 from src.agents.domain_agent import DomainAgent
@@ -13,7 +12,6 @@ load_dotenv()  # Load API keys
 
 
 def main(verbose=True):
-    os.makedirs("outputs", exist_ok=True)
     # 1.  load data set here
     arff_file_path = "./data/dataset_31_credit-g.arff"
 
@@ -21,6 +19,7 @@ def main(verbose=True):
     df = arff_to_dataframe(arff_file_path)
 
     # 2.  Initialize agents
+    planner_agent = PlannerAgent()
     domain_agent = DomainAgent()
     augment_agent = AugmentAgent()
 
@@ -28,9 +27,11 @@ def main(verbose=True):
     original_eval = evaluate(df)
 
     i = 0
+    max_augmentations = 1
+    evals = [original_eval]
 
     while True:
-        if i > 1:
+        if i > max_augmentations:
             break
         # get context from Domain Agent
         context, prompt = domain_agent.analyze(df, arff_metadata=metadata)
@@ -39,7 +40,9 @@ def main(verbose=True):
 
         # TODO: need to finish augment properly + planner agent
         # augmented_df = augment_agent.mapping_binning_augment(df.copy(), domain_context=context)
-        augmented_df, aa_prompt, aa_response = augment_agent.add_column(df.copy(), domain_context=context)
+        augmented_df, aa_prompt, aa_response = augment_agent.add_column(
+            df.copy(), domain_context=context
+        )
         print("Current DataFrame:")
         print(df.head())
         print("Augmented DataFrame:")
@@ -47,14 +50,14 @@ def main(verbose=True):
 
         # evaluate new table
         augmented_eval = evaluate(augmented_df)
+        evals.append(augmented_eval)
         print("Original evaluation:", original_eval)
         print("Augmented evaluation:", augmented_eval)
 
         # output file with prompt, response and eval
         if verbose:
             filename = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = f"outputs/run_{filename}.txt"
-            with open(output_path, "w", encoding="utf-8") as file:
+            with open(f"outputs/run_{filename}.txt", "w") as file:
                 file.write("DA Prompt:\n")
                 file.write(prompt)
                 file.write("\n\n")
@@ -79,7 +82,12 @@ def main(verbose=True):
                 file.write("Evaluation after augmenation:\n")
                 file.write(str(augmented_eval))
 
-
+        # remove column and inform planner if eval dropped
+        if augmented_eval < evals[-1]:
+            augmented_df.drop(
+                columns=[augment_agent.lastest_added_column], inplace=True
+            )
+        planner_agent.last_improved = False
         df = augmented_df.copy()
         i += 1
 

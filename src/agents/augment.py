@@ -15,6 +15,7 @@ load_dotenv()
 class AugmentAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.latest_added_column = None
 
     def add_column(
         self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
@@ -23,10 +24,12 @@ class AugmentAgent:
         Adds one meaningful new column to the DataFrame based on domain context.
         """
         # Load prompt from file
-        prompt_path = os.path.join(os.path.dirname(__file__), 'prompts', 'refined_reasoning_type.txt')
-        with open(prompt_path, 'r') as file:
+        prompt_path = os.path.join(
+            os.path.dirname(__file__), "prompts", "refined_reasoning_type.txt"
+        )
+        with open(prompt_path, "r") as file:
             prompt_template = file.read()
-        
+
         sample_row = df.sample(1).to_dict(orient="records")[0]
 
         augmentation_section = (
@@ -37,10 +40,12 @@ class AugmentAgent:
 
         # Format the prompt with actual values
         prompt = prompt_template.format(
-            primary_domain=domain_context.get('primary_domain', 'Unknown'),
-            column_descriptions=json.dumps(domain_context.get('column_descriptions', {}), indent=2),
+            primary_domain=domain_context.get("primary_domain", "Unknown"),
+            column_descriptions=json.dumps(
+                domain_context.get("column_descriptions", {}), indent=2
+            ),
             sample_row=json.dumps(sample_row, indent=2),
-            augmentation_section=augmentation_section
+            augmentation_section=augmentation_section,
         )
 
         response = self.client.chat.completions.create(
@@ -50,11 +55,11 @@ class AugmentAgent:
         )
 
         suggestion = json.loads(response.choices[0].message.content)
-        
+
         print("\nGPT Suggestion:")
         print(json.dumps(suggestion, indent=2))
         print(f"\nGeneration method to execute: {suggestion['generation_method']}")
-        
+
         try:
             augmented_df = df.copy()
             if suggestion["name"] in augmented_df.columns:
@@ -73,6 +78,7 @@ class AugmentAgent:
                 },
             }
             exec(suggestion["generation_method"], exec_globals)
+            self.latest_added_column = suggestion["name"]
             return augmented_df, prompt, suggestion
         except Exception as e:
             print(f"Failed to add column '{suggestion.get('name', '')}': {str(e)}")

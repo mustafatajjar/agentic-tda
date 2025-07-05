@@ -12,7 +12,7 @@ from tabrepo.benchmark.models.ag.realmlp.realmlp_model import RealMLPModel
 
 
 def evaluate(table):
-    numeric_cols = table.select_dtypes(exclude='category').columns
+    numeric_cols = table.select_dtypes(exclude="category").columns
     table[numeric_cols] = table[numeric_cols].fillna(0)
     label = "class"
     train_data = table.copy()
@@ -20,7 +20,9 @@ def evaluate(table):
     # --- Train ---
     predictor = TabularPredictor(
         label=label, problem_type="binary", eval_metric="roc_auc"
-    ).fit(train_data=train_data, num_bag_folds=5, hyperparameters={"RF": {}}, verbosity=0)
+    ).fit(
+        train_data=train_data, num_bag_folds=5, hyperparameters={"RF": {}}, verbosity=0
+    )
 
     # --- Evaluate ---
     oof_proba = predictor.predict_proba_oof()
