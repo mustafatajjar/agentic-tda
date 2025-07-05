@@ -23,7 +23,7 @@ class AugmentAgent:
         Adds one meaningful new column to the DataFrame based on domain context.
         """
         # Load prompt from file
-        prompt_path = os.path.join(os.path.dirname(__file__), 'prompts', 'reasoning_type.txt')
+        prompt_path = os.path.join(os.path.dirname(__file__), 'prompts', 'refined_reasoning_type.txt')
         with open(prompt_path, 'r') as file:
             prompt_template = file.read()
         
@@ -44,7 +44,7 @@ class AugmentAgent:
         )
 
         response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4.1-mini",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )

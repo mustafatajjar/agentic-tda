@@ -1,0 +1,17 @@
+You are a domain analysis assistant. Use the following ARFF file metadata and table summary
+to infer the dataset's domain and structure.
+
+=== ARFF METADATA ===
+{arff_metadata}
+
+=== COLUMN SUMMARY ===
+(dtype, unique values, missing, mean/min/max/std if numeric):
+{summary_dict}
+
+ === SAMPLE ROW ===
+{sample_row}
+
+Return a JSON object with these 3 elements:
+1. "primary_domain": Broad category (e.g., "healthcare", "ecommerce").
+2. "column_descriptions": Brief explanations for each column's purpose.
+3. "important_metadata": A filtered summary of only the key information from the ARFF metadata.

@@ -1,6 +1,7 @@
 from datetime import datetime
 from dotenv import load_dotenv
 import pandas as pd
+import os
 
 from src.agents.planner_agent import PlannerAgent, Action
 from src.agents.domain_agent import DomainAgent
@@ -12,6 +13,7 @@ load_dotenv()  # Load API keys
 
 
 def main(verbose=True):
+    os.makedirs("outputs", exist_ok=True)
     # 1.  load data set here
     arff_file_path = "./data/dataset_31_credit-g.arff"
 
@@ -51,7 +53,8 @@ def main(verbose=True):
         # output file with prompt, response and eval
         if verbose:
             filename = datetime.now().strftime("%Y%m%d_%H%M%S")
-            with open(f"outputs/run_{filename}.txt", "w") as file:
+            output_path = f"outputs/run_{filename}.txt"
+            with open(output_path, "w", encoding="utf-8") as file:
                 file.write("DA Prompt:\n")
                 file.write(prompt)
                 file.write("\n\n")
