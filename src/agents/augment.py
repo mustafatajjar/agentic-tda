@@ -33,7 +33,14 @@ class AugmentAgent:
 
         sample_row = df.sample(1).to_dict(orient="records")[0]
         
-        df_summary = summarize_dataframe(df)
+        
+        # Prepare data
+        summary_dict = summarize_dataframe(df).reset_index()
+        summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient="records")
+        
+
+        # Pre-format JSON
+        formatted_summary = json.dumps(summary_dict, indent=2)
 
         augmentation_section = (
             f"=== AUGMENTATION GOAL ===\n{augmentation_goal}"
@@ -47,7 +54,7 @@ class AugmentAgent:
             column_descriptions=json.dumps(
                 domain_context.get("column_descriptions", {}), indent=2
             ),
-            table_summary=df_summary,
+            table_summary=formatted_summary,
             sample_row=json.dumps(sample_row, indent=2),
             augmentation_section=augmentation_section,
         )
