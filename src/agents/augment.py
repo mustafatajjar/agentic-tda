@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-import googlesearch
 import json
 from openai import OpenAI
 import os
@@ -8,6 +7,8 @@ from typing import List, Dict, Union
 import numpy as np
 import pandas as pd
 from typing import Tuple
+
+from src.utils import summarize_dataframe
 
 load_dotenv()
 
@@ -31,6 +32,8 @@ class AugmentAgent:
             prompt_template = file.read()
 
         sample_row = df.sample(1).to_dict(orient="records")[0]
+        
+        df_summary = summarize_dataframe(df)
 
         augmentation_section = (
             f"=== AUGMENTATION GOAL ===\n{augmentation_goal}"
@@ -44,6 +47,7 @@ class AugmentAgent:
             column_descriptions=json.dumps(
                 domain_context.get("column_descriptions", {}), indent=2
             ),
+            table_summary=df_summary,
             sample_row=json.dumps(sample_row, indent=2),
             augmentation_section=augmentation_section,
         )
@@ -55,10 +59,6 @@ class AugmentAgent:
         )
 
         suggestion = json.loads(response.choices[0].message.content)
-
-        print("\nGPT Suggestion:")
-        print(json.dumps(suggestion, indent=2))
-        print(f"\nGeneration method to execute: {suggestion['generation_method']}")
 
         try:
             augmented_df = df.copy()

@@ -10,6 +10,9 @@ Suggest ONE non-obvious derived column using your knowledge.
 Primary Domain: {primary_domain}
 Column Descriptions: {column_descriptions}
 
+=== TABLE SUMMARY ===
+{table_summary}
+
 === SAMPLE ROW ===
 {sample_row}
 
