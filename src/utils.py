@@ -8,17 +8,27 @@ def summarize_dataframe(df):
     summary = pd.DataFrame(
         {
             "dtype": df.dtypes,
-            "unique_values": df.nunique(),
+            "unique_count": df.nunique(),
             "missing_values": df.isnull().sum(),
         }
     )
-
+    
+    # Add unique values only for non-numeric columns
+    non_numeric_cols = df.select_dtypes(exclude="number").columns
+    summary["unique_values"] = df[non_numeric_cols].apply(
+        lambda x: list(x.dropna().unique())
+    )
+    
+    # For numeric columns, set unique_values to "continuous values"
     numeric_cols = df.select_dtypes(include="number").columns
+    summary.loc[numeric_cols, "unique_values"] = "continuous values"
+    
+    # Add stats for numeric columns
     summary.loc[numeric_cols, "mean"] = df[numeric_cols].mean()
     summary.loc[numeric_cols, "min"] = df[numeric_cols].min()
     summary.loc[numeric_cols, "max"] = df[numeric_cols].max()
     summary.loc[numeric_cols, "std"] = df[numeric_cols].std()
-
+    
     return summary
 
 
