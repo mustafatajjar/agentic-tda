@@ -83,8 +83,7 @@ def main(verbose=True):
                 file.write(str(augmented_eval))
 
         # remove column and inform planner if eval dropped
-        if augmented_eval < evals[-2]:
-            print('hi')
+        if augmented_eval < max(evals):
             augmented_df = augmented_df.drop(
                 columns=[augment_agent.latest_added_column], inplace=True
             )
