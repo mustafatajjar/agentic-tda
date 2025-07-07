@@ -15,9 +15,12 @@ def summarize_dataframe(df):
     
     # Add unique values only for non-numeric columns
     non_numeric_cols = df.select_dtypes(exclude="number").columns
-    summary["unique_values"] = df[non_numeric_cols].apply(
-        lambda x: list(x.dropna().unique())
-    )
+    summary["unique_values"] = [
+        df[col].dropna().unique().tolist()
+        if col in non_numeric_cols else None
+        for col in df.columns
+    ]
+
     
     # For numeric columns, set unique_values to "continuous values"
     numeric_cols = df.select_dtypes(include="number").columns
