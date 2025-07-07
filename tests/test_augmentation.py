@@ -45,6 +45,33 @@ def test_mapping():
     df = aa.make_augmentation(df, augmentation)
     print("Augmented DataFrame:", df)
 
+
+def test_sparql_prompting():
+    aa = AugmentAgent()
+
+    df = pd.DataFrame([
+        ['Toyota', 'Corolla', 2020, 20000],
+        ['Ford', 'Mustang', 2019, 26000],
+        ['Honda', 'Civic', 2021, 22000],
+        ['Tesla', 'Model 3', 2022, 35000],
+        ['BMW', 'X5', 2018, 45000]
+    ], columns=['Make', 'Model', 'Year', 'Price_USD'])
+
+
+    domain_context = {
+        "primary_domain": "Cars",
+        "column_descriptions": {
+            "Make": "Name of the car brand",
+            "Model": "Car Model",
+            "Year": "Year the car was built",
+            "Price_USD": "Price in US Dollars"
+        }
+    }
+
+    print(aa.sparql_prompting(df, domain_context))
+
+
 if __name__ == "__main__":
-    test_binning()
-    test_mapping()
+    test_sparql_prompting()
+    # test_binning()
+    # test_mapping()

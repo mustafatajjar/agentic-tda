@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import json
 from openai import OpenAI
 import os
+import requests
 from typing import List, Dict, Union
 
 import numpy as np
@@ -48,6 +49,8 @@ class AugmentAgent:
             else ""
         )
 
+        sparql_result, purpose, expected_columns = self.sparql_prompting(df, domain_context)
+
         # Format the prompt with actual values
         prompt = prompt_template.format(
             primary_domain=domain_context.get("primary_domain", "Unknown"),
@@ -57,6 +60,9 @@ class AugmentAgent:
             table_summary=formatted_summary,
             sample_row=json.dumps(sample_row, indent=2),
             augmentation_section=augmentation_section,
+            sparql_result=sparql_result,
+            purpose=purpose,
+            expected_columns=expected_columns
         )
 
         response = self.client.chat.completions.create(
@@ -224,8 +230,6 @@ class AugmentAgent:
             return suggestion
 
     def make_augmentation(self, df: pd.DataFrame, augmentation: dict) -> pd.DataFrame:
-        print("AUGMENTATION")
-        print(augmentation)
         method = augmentation["method"]
         input_columns = augmentation["input_columns"]
         output_column = augmentation["output_column"]
@@ -247,11 +251,7 @@ class AugmentAgent:
             interval_to_mid = dict(zip(intervals, midpoints))
             df[output_column] = df[output_column].map(interval_to_mid)
         elif method == "Mapping":
-            print("INPUT COLUMNS")
-            print(input_columns)
             mapping = augmentation["mapping"]
-            print("MAPPING")
-            print(mapping)
             map_ser = pd.Series(mapping)
             map_ser.index = pd.MultiIndex.from_tuples(
                 map_ser.index, names=input_columns
@@ -263,3 +263,95 @@ class AugmentAgent:
         else:
             print("Invalid augmentation specified. No changes made.")
         return df
+
+    def get_sparql_response(self, query):
+        endpoint = "https://qlever.cs.uni-freiburg.de/api/wikidata"
+        response = requests.post(
+            endpoint,
+            headers={"Content-Type": "application/sparql-query"},
+            data=query
+        )
+
+        # Check result
+        if response.ok:
+            result = response.json()
+            return result["results"]["bindings"]
+        else:
+            print("Query failed:", response.status_code, response.text)
+            return None
+
+    def sparql_prompting(self, df: pd.DataFrame, domain_context: dict):
+        sample_row = df.sample(1).to_dict(orient="records")[0]
+        
+        # Prepare data
+        summary_dict = summarize_dataframe(df).reset_index()
+        summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient="records")
+        
+        # Pre-format JSON
+        formatted_summary = json.dumps(summary_dict, indent=2)
+
+        prompt = f"""
+        You are an expert knowledge-graph engineer working with the QLever SPARQL engine (https://qlever.cs.uni-freiburg.de).
+
+        ──────────────────────── DOMAIN CONTEXT ────────────────────────
+        {domain_context}
+
+        ──────────────────────── DATASET SUMMARY ────────────────────────
+        {formatted_summary}
+
+        ──────────────────────── FIRST ROW (EXAMPLE) ────────────────────────
+        {sample_row}
+
+        ──────────────────────── REFERENCE EXAMPLE ────────────────────────
+        Below is an example of a valid SPARQL 1.1 query that lists German cities and their populations (labels in German).
+        Do not copy it verbatim; use it only as a style and structure reference:
+
+        PREFIX wd:  <http://www.wikidata.org/entity/>
+        PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+        PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>
+
+        SELECT DISTINCT ?name ?population WHERE {{
+            ?city wdt:P31/wdt:P279* wd:Q515 .
+            ?city wdt:P17 wd:Q183 .
+            ?city wdt:P1082 ?population .
+            ?city rdfs:label ?name .
+            FILTER (LANG(?name) = "de")
+        }}
+        ORDER BY DESC(?population)
+        LIMIT 100
+
+        ──────────────────────── TASK ────────────────────────────────
+        Write one SPARQL 1.1 query, including PREFIX declarations, that can be executed on the QLever Wikidata endpoint.
+        Use these prefixes at the top:
+
+        PREFIX wd: <http://www.wikidata.org/entity/>
+        PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX wikibase: <https://wikiba.se/ontology#>
+        PREFIX bd: <http://www.bigdata.com/rdf#>
+        PREFIX schema: <http://schema.org/>
+
+        The query should return data relevant to the table, using information from at least one of the columns.
+
+        **Do not use SERVICE wikibase:label, instead retrieve labels explicitly using rdfs:label and appropriate language filters.**
+
+        Return only the following JSON object (no markdown fences or extra text):
+
+        {{
+            "sparql_query": "<your full query here>",
+            "purpose": "<one sentence describing what this query fetches>",
+            "expected_columns": ["col_1", "col_2", "..."]
+        }}
+        """
+
+        response = self.client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+        )
+        response = json.loads(response.choices[0].message.content)
+        query = response["sparql_query"]
+        purpose = response["purpose"]
+        expected_columns = response["expected_columns"]
+        response = self.get_sparql_response(query)
+        return response, purpose, expected_columns

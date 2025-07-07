@@ -28,6 +28,15 @@ Column Descriptions: {column_descriptions}
 === SAMPLE ROW ===
 {sample_row}
 
+=== SPARQL RESULT ===
+{sparql_result}
+
+=== PURPOSE ===
+{purpose}
+
+=== EXPECTED COLUMNS ===
+{expected_columns}
+
 === REASONING PROCESS ===
 1. Observe: Identify non-linear patterns or multidimensional relationships
 2. Hypothesize: Propose latent variables requiring 2+ columns or business logic
