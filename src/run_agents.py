@@ -27,7 +27,7 @@ def main(verbose=True):
     original_eval = evaluate(df)
 
     i = 0
-    max_augmentations = 1
+    max_augmentations = 6
     evals = [original_eval]
 
     while True:
@@ -83,12 +83,16 @@ def main(verbose=True):
                 file.write(str(augmented_eval))
 
         # remove column and inform planner if eval dropped
-        if augmented_eval < evals[-1]:
-            augmented_df.drop(
-                columns=[augment_agent.lastest_added_column], inplace=True
+        if augmented_eval < evals[-2]:
+            print('hi')
+            augmented_df = augmented_df.drop(
+                columns=[augment_agent.latest_added_column], inplace=True
             )
         planner_agent.last_improved = False
-        df = augmented_df.copy()
+        if augmented_df is not None:
+            df = augmented_df.copy()
+        else:
+            print("Augmentation failed, skipping this iteration.")
         i += 1
 
 

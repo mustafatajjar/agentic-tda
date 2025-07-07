@@ -71,7 +71,7 @@ class AugmentAgent:
             augmented_df = df.copy()
             if suggestion["name"] in augmented_df.columns:
                 print(f"Column '{suggestion['name']}' already exists - skipping")
-                return augmented_df
+                return augmented_df, prompt, suggestion
             exec_globals = {
                 "df": augmented_df,
                 "np": np,
