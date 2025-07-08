@@ -21,7 +21,7 @@ def evaluate(table):
     predictor = TabularPredictor(
         label=label, problem_type="binary", eval_metric="roc_auc"
     ).fit(
-        train_data=train_data, num_bag_folds=5, hyperparameters={"RF": {}}, verbosity=0
+        train_data=train_data, num_bag_folds=8, hyperparameters={"RF": {}}, verbosity=0
     )
 
     # --- Evaluate ---

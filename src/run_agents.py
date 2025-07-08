@@ -27,7 +27,7 @@ def main(verbose=True):
     original_eval = evaluate(df)
 
     i = 0
-    max_augmentations = 6
+    max_augmentations = 1
     evals = [original_eval]
 
     while True:

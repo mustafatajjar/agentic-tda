@@ -291,7 +291,8 @@ class AugmentAgent:
         formatted_summary = json.dumps(summary_dict, indent=2)
 
         prompt = f"""
-        You are an expert knowledge-graph engineer working with the QLever SPARQL engine (https://qlever.cs.uni-freiburg.de).
+        You are an expert knowledge‑graph engineer writing SPARQL 1.1 queries for the
+        QLever Wikidata endpoint (https://qlever.cs.uni-freiburg.de).
 
         ──────────────────────── DOMAIN CONTEXT ────────────────────────
         {domain_context}
@@ -299,47 +300,67 @@ class AugmentAgent:
         ──────────────────────── DATASET SUMMARY ────────────────────────
         {formatted_summary}
 
-        ──────────────────────── FIRST ROW (EXAMPLE) ────────────────────────
+        ──────────────────────── FIRST ROW (EXAMPLE) ─────────────────────
         {sample_row}
 
-        ──────────────────────── REFERENCE EXAMPLE ────────────────────────
-        Below is an example of a valid SPARQL 1.1 query that lists German cities and their populations (labels in German).
-        Do not copy it verbatim; use it only as a style and structure reference:
-
-        PREFIX wd:  <http://www.wikidata.org/entity/>
-        PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-        PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>
+        ────────────────── REFERENCE QUERY (style only) ──────────────────
+        PREFIX wd:   <http://www.wikidata.org/entity/>
+        PREFIX wdt:  <http://www.wikidata.org/prop/direct/>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
         SELECT DISTINCT ?name ?population WHERE {{
-            ?city wdt:P31/wdt:P279* wd:Q515 .
-            ?city wdt:P17 wd:Q183 .
-            ?city wdt:P1082 ?population .
-            ?city rdfs:label ?name .
-            FILTER (LANG(?name) = "de")
+        ?city wdt:P31/wdt:P279* wd:Q515 ;
+                wdt:P17           wd:Q183 ;
+                wdt:P1082         ?population ;
+                rdfs:label        ?name .
+        FILTER(LANG(?name)="de")
         }}
         ORDER BY DESC(?population)
         LIMIT 100
 
-        ──────────────────────── TASK ────────────────────────────────
-        Write one SPARQL 1.1 query, including PREFIX declarations, that can be executed on the QLever Wikidata endpoint.
-        Use these prefixes at the top:
+        ──────── Example of listing multiple entities with VALUES ────────
+        VALUES ?purpose {{
+            wd:Q109746  # radio/tv
+            wd:Q148428  # education
+            wd:Q48552   # furniture/equipment
+        }}
 
-        PREFIX wd: <http://www.wikidata.org/entity/>
-        PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+        Prefer Q-IDs over literal strings
+        Note: Using VALUES with literal strings for labels requires exact match including language tags, e.g.,
+        VALUES ?label {{ "Toyota"@en "Ford"@en "Honda"@en }}
+        Otherwise, matching label literals without language tags will fail.
+
+        ────────────────────────── TASK ──────────────────────────
+        Write ONE SPARQL 1.1 query that can run on the QLever Wikidata endpoint
+        and returns information that enriches **at least one column** of the table
+        above.
+
+        Use exactly these PREFIX lines at the top (no others):
+
+        PREFIX wd:   <http://www.wikidata.org/entity/>
+        PREFIX wdt:  <http://www.wikidata.org/prop/direct/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        PREFIX wikibase: <https://wikiba.se/ontology#>
-        PREFIX bd: <http://www.bigdata.com/rdf#>
-        PREFIX schema: <http://schema.org/>
+        PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
 
-        The query should return data relevant to the table, using information from at least one of the columns.
+        ⚠ Do **NOT** use SERVICE wikibase:label.
+        Retrieve labels like this instead:
+        ?entity rdfs:label ?entityLabel .
+        FILTER(LANG(?entityLabel)="en")
 
-        **Do not use SERVICE wikibase:label, instead retrieve labels explicitly using rdfs:label and appropriate language filters.**
+        If you do not know the correct wdt:P### predicate, follow this mini‑recipe
+        inside the query construction (do not include the recipe in output):
 
-        Return only the following JSON object (no markdown fences or extra text):
+        1. Start from a sample value (from the FIRST ROW) with rdfs:label.
+        2. Inspect which direct properties (?item ?p []) connect that value.
+        3. Select the property that best matches the column description.
+
+        Avoid re‑binding a variable that already appears in the WHERE block.
+
+        Return **only** this JSON object (no markdown fences):
 
         {{
             "sparql_query": "<your full query here>",
-            "purpose": "<one sentence describing what this query fetches>",
+            "purpose": "<one concise sentence>",
             "expected_columns": ["col_1", "col_2", "..."]
         }}
         """
@@ -351,7 +372,9 @@ class AugmentAgent:
         )
         response = json.loads(response.choices[0].message.content)
         query = response["sparql_query"]
+        print(query)
         purpose = response["purpose"]
         expected_columns = response["expected_columns"]
         response = self.get_sparql_response(query)
+        print(response)
         return response, purpose, expected_columns
