@@ -7,6 +7,7 @@ from src.agents.domain_agent import DomainAgent
 from src.agents.augment import AugmentAgent
 from src.agents.eval_agent import evaluate
 from src.utils import arff_to_dataframe, extract_arff_metadata
+from src.agents.feature_pruning import prune_features_binary_classification
 
 load_dotenv()  # Load API keys
 
@@ -29,31 +30,51 @@ def main(verbose=True):
     i = 0
     max_augmentations = 1
     evals = [original_eval]
+    
+    target_column = "class"
 
     while True:
         if i > max_augmentations:
             break
         # get context from Domain Agent
         context, prompt = domain_agent.analyze(df, arff_metadata=metadata)
-        print("Domain Context:")
-        print(context)
+        #print("Domain Context:")
+        #print(context)
 
         # TODO: need to finish augment properly + planner agent
         # augmented_df = augment_agent.mapping_binning_augment(df.copy(), domain_context=context)
         augmented_df, aa_prompt, aa_response = augment_agent.add_column(
             df.copy(), domain_context=context
         )
-        print("Current DataFrame:")
-        print(df.head())
-        print("Augmented DataFrame:")
-        print(augmented_df.head())
+        #print("Current DataFrame:")
+        #print(df.head())
+        #print("Augmented DataFrame:")
+        #print(augmented_df.head())
+        
+        
+        try:
+            y = augmented_df[target_column]
+            X = augmented_df.drop(columns=[target_column])
+            
+            selected_features = prune_features_binary_classification(
+                X, y, time_limit_per_split=100, eval_metric="accuracy"
+            )
+            X_pruned = X[selected_features]
 
+            # Reattach y for evaluation
+            augmented_df_pruned = X_pruned.copy()
+            augmented_df_pruned[target_column] = y
+        except Exception as e:
+            print(f"Feature pruning failed: {e}")
+            augmented_df_pruned = augmented_df
+        
+        
         # evaluate new table
-        augmented_eval = evaluate(augmented_df)
+        augmented_eval = evaluate(augmented_df_pruned)
         evals.append(augmented_eval)
         print("Original evaluation:", original_eval)
         print("Augmented evaluation:", augmented_eval)
-
+        
         # output file with prompt, response and eval
         if verbose:
             filename = datetime.now().strftime("%Y%m%d_%H%M%S")
