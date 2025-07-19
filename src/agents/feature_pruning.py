@@ -47,7 +47,7 @@ def prune_features_binary_classification(
             self._feature_generator = AutoMLPipelineFeatureGenerator(verbosity=0)
             X = self._feature_generator.fit_transform(X, y)
 
-            self.model = LGBMClassifier(random_state=42)
+            self.model = LGBMClassifier(random_state=42, verbose=-1)
             self.model.fit(X, y)
 
         def predict(self, X, **kwargs):
