@@ -20,25 +20,26 @@ class AugmentAgent:
         self.latest_added_column = None
 
     def add_column(
-        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
+        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None, aprompt: str = None
     ) -> Tuple[pd.DataFrame, str, dict]:
         """
         Adds one meaningful new column to the DataFrame based on domain context.
         """
-        # Load prompt from file
-        prompt_path = os.path.join(
-            os.path.dirname(__file__), "prompts", "refined_reasoning_type.txt"
-        )
-        with open(prompt_path, "r") as file:
-            prompt_template = file.read()
+        # Use provided prompt if given, else load from file
+        if aprompt is not None:
+            prompt_template = aprompt
+        else:
+            prompt_path = os.path.join(
+                os.path.dirname(__file__), "prompts", "refined_reasoning_type.txt"
+            )
+            with open(prompt_path, "r") as file:
+                prompt_template = file.read()
 
         sample_row = df.sample(1).to_dict(orient="records")[0]
-        
-        
+
         # Prepare data
         summary_dict = summarize_dataframe(df).reset_index()
         summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient="records")
-        
 
         # Pre-format JSON
         formatted_summary = json.dumps(summary_dict, indent=2)
