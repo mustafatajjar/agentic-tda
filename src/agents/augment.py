@@ -49,7 +49,7 @@ class AugmentAgent:
             else ""
         )
 
-        sparql_result, purpose, expected_columns = self.sparql_prompting(df, domain_context)
+        sparql_result, purpose, expected_columns = "", "", "" # self.sparql_prompting(df, domain_context)
 
         # Format the prompt with actual values
         prompt = prompt_template.format(
@@ -291,79 +291,127 @@ class AugmentAgent:
         formatted_summary = json.dumps(summary_dict, indent=2)
 
         prompt = f"""
-        You are an expert knowledge‑graph engineer writing SPARQL 1.1 queries for the
-        QLever Wikidata endpoint (https://qlever.cs.uni-freiburg.de).
+        You are a knowledge graph expert writing SPARQL 1.1 queries for the QLever Wikidata endpoint (https://qlever.cs.uni-freiburg.de).
 
-        ──────────────────────── DOMAIN CONTEXT ────────────────────────
+        Your task is to gather knowledge about the table by querying Wikidata.
+        First, you will need to find the predicates that connect information in the table to information you want to retrieve.
+
+        ─────────────────────── DOMAIN CONTEXT ─────────────────────────
         {domain_context}
 
-        ──────────────────────── DATASET SUMMARY ────────────────────────
+        ─────────────────────── DATASET SUMMARY ────────────────────────
         {formatted_summary}
 
-        ──────────────────────── FIRST ROW (EXAMPLE) ─────────────────────
+        ──────────────────────── FIRST ROW SAMPLE ──────────────────────
         {sample_row}
 
-        ────────────────── REFERENCE QUERY (style only) ──────────────────
-        PREFIX wd:   <http://www.wikidata.org/entity/>
-        PREFIX wdt:  <http://www.wikidata.org/prop/direct/>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        Use only `rdfs:label` to refer to the subject and object entities.
 
-        SELECT DISTINCT ?name ?population WHERE {{
-        ?city wdt:P31/wdt:P279* wd:Q515 ;
-                wdt:P17           wd:Q183 ;
-                wdt:P1082         ?population ;
-                rdfs:label        ?name .
-        FILTER(LANG(?name)="de")
-        }}
-        ORDER BY DESC(?population)
-        LIMIT 100
-
-        ──────── Example of listing multiple entities with VALUES ────────
-        VALUES ?purpose {{
-            wd:Q109746  # radio/tv
-            wd:Q148428  # education
-            wd:Q48552   # furniture/equipment
-        }}
-
-        Prefer Q-IDs over literal strings
-        Note: Using VALUES with literal strings for labels requires exact match including language tags, e.g.,
-        VALUES ?label {{ "Toyota"@en "Ford"@en "Honda"@en }}
-        Otherwise, matching label literals without language tags will fail.
-
-        ────────────────────────── TASK ──────────────────────────
-        Write ONE SPARQL 1.1 query that can run on the QLever Wikidata endpoint
-        and returns information that enriches **at least one column** of the table
-        above.
-
-        Use exactly these PREFIX lines at the top (no others):
+        Use these prefixes exactly:
 
         PREFIX wd:   <http://www.wikidata.org/entity/>
         PREFIX wdt:  <http://www.wikidata.org/prop/direct/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
 
-        ⚠ Do **NOT** use SERVICE wikibase:label.
-        Retrieve labels like this instead:
-        ?entity rdfs:label ?entityLabel .
-        FILTER(LANG(?entityLabel)="en")
+        ───────────────────── EXAMPLE ─────────────────────
+        For example, to find which predicates link the entity labeled "Madrid" to the entity labeled "Spain", the query would be:
 
-        If you do not know the correct wdt:P### predicate, follow this mini‑recipe
-        inside the query construction (do not include the recipe in output):
+        ```sparql
+        PREFIX wd:   <http://www.wikidata.org/entity/>
+        PREFIX wdt:  <http://www.wikidata.org/prop/direct/>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-        1. Start from a sample value (from the FIRST ROW) with rdfs:label.
-        2. Inspect which direct properties (?item ?p []) connect that value.
-        3. Select the property that best matches the column description.
+        SELECT DISTINCT ?predicate ?predicateLabel ?object WHERE {{
+            ?subject rdfs:label "Madrid"@en .
+            ?object  rdfs:label "Spain"@en .
+            ?subject ?predicate ?object .
+            OPTIONAL {{
+                ?predicate rdfs:label ?predicateLabel .
+                FILTER(LANG(?predicateLabel) = "en")
+            }}
+        }}
+        This query finds all predicates connecting the two entities labeled "Madrid" and "Spain", along with the human-readable labels of those predicates.
+        Note: you are not forced to use both, subject and object, in the query.
 
-        Avoid re‑binding a variable that already appears in the WHERE block.
+        ───────────────────── TASK ─────────────────────
 
-        Return **only** this JSON object (no markdown fences):
+        Return only this JSON object (no markdown fences):
 
         {{
-            "sparql_query": "<your full query here>",
-            "purpose": "<one concise sentence>",
-            "expected_columns": ["col_1", "col_2", "..."]
+            "sparql_query": "<your generated SPARQL query here>"
+            "input_label": "the table content you were looking to query for, e.g., 'Madrid'"
         }}
         """
+
+        response = self.client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+        )
+        response = json.loads(response.choices[0].message.content)
+        query = response["sparql_query"]
+        #print(query)
+
+
+
+
+        prompt = f"""
+        You are an expert SPARQL engineer working with the QLever Wikidata endpoint (https://qlever.cs.uni-freiburg.de).
+
+        You have just run a discovery query to find all predicates that connect two entities identified only by their `rdfs:label`. Now you will use the results of that query to construct a **new query** that retrieves meaningful information involving those predicates.
+
+        ────────────────────── PREVIOUS DISCOVERY ──────────────────────
+        The previous query returned a list of predicates connecting:
+        Subject label: "{{subject_label}}"
+        Object label: "{{object_label}}"
+
+        These predicates were found:
+        {json.dumps(query, indent=2)}
+
+        What was looked for in the previous query:
+        {response["input_label"]}
+
+        ─────────────────────── DOMAIN CONTEXT ─────────────────────────
+        {domain_context}
+
+        ─────────────────────── DATASET SUMMARY ────────────────────────
+        {formatted_summary}
+
+        ──────────────────────── FIRST ROW SAMPLE ──────────────────────
+        {sample_row}
+
+        ─────────────────── CONSTRAINTS FOR QUERY ──────────────────────
+        - Use only the predicate URIs from the previous query result.
+        - Use `rdfs:label` to access readable names, with:
+            FILTER(LANG(?label) = "en")
+        - Do not use SERVICE wikibase:label.
+        - Avoid guessing P-IDs — only reuse the predicates shown above.
+        - Do not include unrelated PREFIXes or unused namespaces.
+
+        ────────────────────────── EXAMPLE ────────────────────────────
+
+        If the predicate `http://www.wikidata.org/prop/direct/P36` ("capital") was returned connecting "Madrid" and "Spain", a follow-up query might look like:
+
+        SELECT ?city ?cityLabel WHERE {{
+        ?country rdfs:label "Spain"@en .
+        ?city <http://www.wikidata.org/prop/direct/P36> ?country .
+        ?city rdfs:label ?cityLabel .
+        FILTER(LANG(?cityLabel) = "en")
+        }}
+
+        ────────────────────────── TASK ───────────────────────────────
+
+        Now, write a SPARQL query that explores one or more of the discovered predicates to enrich the table. It should use only predicates from the discovery result above and return readable English labels.
+
+        Return only this JSON object (no markdown fences):
+
+        {{
+        "sparql_query": "<your full query here>",
+        "purpose": "Describe the predicate relationships between entities based on previous discovery",
+        "expected_columns": ["entity", "predicateLabel", "connectedEntityLabel"]
+        }}
+        """
+
 
         response = self.client.chat.completions.create(
             model="gpt-4.1-mini",
