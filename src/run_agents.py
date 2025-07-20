@@ -38,6 +38,7 @@ def main(verbose=True):
     evals = [np.mean(original_nested_cv_scores)]
 
     i = 0
+    j = 0
     max_augmentations = 1
 
     df = arff_to_dataframe(arff_file_path)  # your DataFrame
@@ -52,10 +53,10 @@ def main(verbose=True):
     for i, indices in enumerate(fold_indices):
         with open(f"outputs/fold_{i+1}_indices.txt", "w") as f:
             f.write("\n".join(map(str, indices)))
-    target_column = "class"
+
 
     while True:
-        if i > max_augmentations:
+        if j > max_augmentations:
             break
         # get context from Domain Agent
         context, prompt = domain_agent.analyze(df, arff_metadata=metadata)
@@ -70,11 +71,23 @@ def main(verbose=True):
             y = augmented_df[target_column]
             X = augmented_df.drop(columns=[target_column])
             selected_features = prune_features_binary_classification(
-                X, y, time_limit_per_split=100, eval_metric="accuracy"
+                X, y, time_limit_per_split=200, eval_metric="accuracy"
             )
-            X_pruned = X[selected_features]
-            augmented_df_pruned = X_pruned.copy()
-            augmented_df_pruned[target_column] = y
+
+            # Check if any features were actually pruned
+            if len(selected_features) < len(X.columns):
+                print(
+                    f"Pruning effective: {len(X.columns)} -> {len(selected_features)} features."
+                )
+                X_pruned = X[selected_features]
+                augmented_df_pruned = X_pruned.copy()
+                augmented_df_pruned[target_column] = y
+            else:
+                print(
+                    "Pruning did not remove any features, using original augmented dataframe."
+                )
+                augmented_df_pruned = augmented_df
+
         except Exception as e:
             print(f"Feature pruning failed: {e}")
             augmented_df_pruned = augmented_df
@@ -122,7 +135,7 @@ def main(verbose=True):
             df = augmented_df.copy()
         else:
             print("Augmentation failed, skipping this iteration.")
-        i += 1
+        j += 1
 
     # Test on holdout after all augmentations
     final_eval = evaluator.test_on_holdout(df)

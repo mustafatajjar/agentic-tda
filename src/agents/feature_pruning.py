@@ -1,4 +1,3 @@
-
 import time
 import warnings
 import pandas as pd
@@ -59,18 +58,13 @@ def prune_features_binary_classification(
         def _set_default_params(self):
             self._set_default_param_value("random_state", 42)
 
-    # Encode original features
-    feature_generator = AutoMLPipelineFeatureGenerator(verbosity=0)
-    X_transformed = feature_generator.fit_transform(X=X, y=y)
-
-    print(f"Initial Pruning:\tPruned from {X.shape[1]} to {X_transformed.shape[1]} features using AutoMLPipelineFeatureGenerator.")
-    X = X[X_transformed.columns]  # Keep only valid features
+    print(f"Pruning from {X.shape[1]} features...")
 
     # FeatureSelector configuration
     selection_config = dict(
         n_fi_subsample=100000,
-        prune_threshold="none",
-        prune_ratio=0.05,
+        prune_threshold=0.0,  # Removes features with no positive importance
+        prune_ratio=0.1,  # stricter pruning
         stopping_round=20,
     )
 
