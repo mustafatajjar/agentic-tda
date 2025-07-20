@@ -372,9 +372,9 @@ class AugmentAgent:
         )
         response = json.loads(response.choices[0].message.content)
         query = response["sparql_query"]
-        print(query)
+        #print(query)
         purpose = response["purpose"]
         expected_columns = response["expected_columns"]
         response = self.get_sparql_response(query)
-        print(response)
+        #print(response)
         return response, purpose, expected_columns

@@ -39,7 +39,7 @@ def main(verbose=True):
 
     i = 0
     j = 0
-    max_augmentations = 1
+    max_augmentations = 3
 
     df = arff_to_dataframe(arff_file_path)  # your DataFrame
 
@@ -67,6 +67,11 @@ def main(verbose=True):
             df.copy(), domain_context=context
         )
 
+        # Evaluate before pruning
+        print("Evaluating augmented table before pruning...")
+        eval_before_pruning_scores = evaluator.nested_cross_val(augmented_df)
+        print(f"Nested CV scores on augmented table (before pruning): {np.mean(eval_before_pruning_scores)}")
+
         try:
             y = augmented_df[target_column]
             X = augmented_df.drop(columns=[target_column])
@@ -93,9 +98,9 @@ def main(verbose=True):
             augmented_df_pruned = augmented_df
 
         # Nested cross-validation on the new table
-        augmented_eval_scores = evaluator.nested_cross_val(augmented_df_pruned)
-        print("Nested CV scores after augmentation:", augmented_eval_scores)
-        evals.append(np.mean(augmented_eval_scores))
+        eval_after_pruning_scores = evaluator.nested_cross_val(augmented_df_pruned)
+        evals.append(np.mean(eval_after_pruning_scores))
+        print(f"Mean evaluation score after pruning: {np.mean(eval_after_pruning_scores)}")
 
         # output file with prompt, response and eval
         if verbose:
@@ -122,19 +127,21 @@ def main(verbose=True):
                 file.write("Evaluation before augmenation:\n")
                 file.write(str(original_eval))
                 file.write("\n\n")
-                file.write("Evaluation after augmenation:\n")
-                file.write(str(np.mean(augmented_eval_scores)))
+                file.write("Evaluation after augmentation (before pruning):\n")
+                file.write(str(np.mean(eval_before_pruning_scores)))
+                file.write("\n\n")
+                file.write("Evaluation after augmentation (after pruning):\n")
+                file.write(str(np.mean(eval_after_pruning_scores)))
 
-        # remove column and inform planner if eval dropped
-        if augmented_eval_scores and np.mean(augmented_eval_scores) < max(evals):
-            augmented_df = augmented_df.drop(
-                columns=[augment_agent.latest_added_column]
-            )
-        planner_agent.last_improved = False
-        if augmented_df is not None:
-            df = augmented_df.copy()
+        # Decide whether to keep the changes based on performance
+        if np.mean(eval_after_pruning_scores) > max(evals[:-1]):  # Compare to previous best
+            print("Performance improved. Keeping augmented and pruned table for next iteration.")
+            df = augmented_df_pruned.copy()
+            planner_agent.last_improved = True
         else:
-            print("Augmentation failed, skipping this iteration.")
+            print("Performance did not improve. Reverting to table from previous iteration.")
+            planner_agent.last_improved = False
+        
         j += 1
 
     # Test on holdout after all augmentations
