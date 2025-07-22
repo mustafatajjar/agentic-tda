@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from datetime import datetime
 from dotenv import load_dotenv
 import pandas as pd
@@ -15,8 +16,13 @@ load_dotenv()  # Load API keys
 
 
 def main(verbose=True):
+    parser = ArgumentParser()
+    parser.add_argument("--data_path", type=str, default="./data/dataset_31_credit-g.arff")
+    args = parser.parse_args()
+
     # 1.  load data set here
-    arff_file_path = "./data/dataset_31_credit-g.arff"
+    arff_file_path = args.data_path
+    print(f"Loading ARFF file from: {arff_file_path}")
 
     metadata = extract_arff_metadata(arff_file_path)
     df = arff_to_dataframe(arff_file_path)
