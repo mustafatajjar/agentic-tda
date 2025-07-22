@@ -26,7 +26,7 @@ from src.utils import load_arff_to_dataframe
 
 def main():
     table = load_arff_to_dataframe("data/houses.arff")
-    evaluate(table)
+    # evaluate(table)
 
     X = table.drop(columns=["binaryClass"])
     y = table["binaryClass"]
