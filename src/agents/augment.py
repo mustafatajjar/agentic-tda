@@ -17,28 +17,29 @@ load_dotenv()
 class AugmentAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.latest_added_column = None
+        self.latest_added_columns = []
 
     def add_column(
-        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
-    ) -> Tuple[pd.DataFrame, str, dict]:
+        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None, aprompt: str = None
+    ) -> Tuple[pd.DataFrame, str, list]:
         """
-        Adds one meaningful new column to the DataFrame based on domain context.
+        Adds multiple meaningful new columns to the DataFrame based on domain context.
         """
-        # Load prompt from file
-        prompt_path = os.path.join(
-            os.path.dirname(__file__), "prompts", "refined_reasoning_type.txt"
-        )
-        with open(prompt_path, "r") as file:
-            prompt_template = file.read()
+        # Use provided prompt if given, else load from file
+        if aprompt is not None:
+            prompt_template = aprompt
+        else:
+            prompt_path = os.path.join(
+                os.path.dirname(__file__), "prompts", "refined_reasoning_type.txt"
+            )
+            with open(prompt_path, "r") as file:
+                prompt_template = file.read()
 
         sample_row = df.sample(1).to_dict(orient="records")[0]
-        
-        
+
         # Prepare data
         summary_dict = summarize_dataframe(df).reset_index()
         summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient="records")
-        
 
         # Pre-format JSON
         formatted_summary = json.dumps(summary_dict, indent=2)
@@ -71,31 +72,36 @@ class AugmentAgent:
             response_format={"type": "json_object"},
         )
 
-        suggestion = json.loads(response.choices[0].message.content)
+        suggestions = json.loads(response.choices[0].message.content)["columns"]
 
         try:
             augmented_df = df.copy()
-            if suggestion["name"] in augmented_df.columns:
-                print(f"Column '{suggestion['name']}' already exists - skipping")
-                return augmented_df, prompt, suggestion
-            exec_globals = {
-                "df": augmented_df,
-                "np": np,
-                "pd": pd,
-                "__builtins__": {
-                    "int": int,
-                    "float": float,
-                    "range": range,
-                    "list": list,
-                    "dict": dict,
-                },
-            }
-            exec(suggestion["generation_method"], exec_globals)
-            self.latest_added_column = suggestion["name"]
-            return augmented_df, prompt, suggestion
+            added_columns = []
+            for suggestion in suggestions:
+                col_name = suggestion["name"]
+                if col_name in augmented_df.columns:
+                    print(f"Column '{col_name}' already exists - skipping")
+                else:
+                    exec_globals = {
+                        "df": augmented_df,
+                        "np": np,
+                        "pd": pd,
+                        "__builtins__": {
+                            "int": int,
+                            "float": float,
+                            "range": range,
+                            "list": list,
+                            "dict": dict,
+                        },
+                    }
+                    exec(suggestion["generation_method"], exec_globals)
+                    added_columns.append(col_name)
+
+            self.latest_added_columns = added_columns
+            return augmented_df, prompt, suggestions
         except Exception as e:
-            print(f"Failed to add column '{suggestion.get('name', '')}': {str(e)}")
-            return df, prompt, suggestion
+            print(f"Failed to add columns: {str(e)}")
+            return df, prompt, suggestions
 
     def mapping_binning_augment(
         self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None

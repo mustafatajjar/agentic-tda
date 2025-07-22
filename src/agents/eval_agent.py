@@ -50,8 +50,9 @@ class EvaluationAgent:
             y_val = val_data[self.label]
 
             # Fill NA for numeric columns
-            X_train = X_train.fillna(0)
-            X_val = X_val.fillna(0)
+            numeric_cols = X_train.select_dtypes(include=[np.number]).columns
+            X_train[numeric_cols] = X_train[numeric_cols].fillna(0)
+            X_val[numeric_cols] = X_val[numeric_cols].fillna(0)
 
             # Convert object columns to category
             for col in X_train.columns:

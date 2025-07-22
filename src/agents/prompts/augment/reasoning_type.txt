@@ -1,22 +1,35 @@
 You are a data augmentation assistant specialized in advanced feature engineering. 
-Suggest 20 non-obvious derived columns using your knowledge.
+Suggest ONE non-obvious derived column using sophisticated operations.
 
 === STRICT REQUIREMENTS ===
-1. Only use mapping to create to new column you can derive the mapping using your own general konwledge and the information you get about the table.
-2. An example would be if you had a dataset about housing with location as column you could use your knowledge to determin if the neighborhood is rich/poor has-crimes/crime-free.
-3. Do not use mathematical formulas
+1. NEVER use basic arithmetic (+, -, *, /)
+2. Prefer these advanced operations:
+   - Binning with business logic (pd.cut/qcut)
+   - Multi-column logical conditions
+   - Group aggregations with transforms
+   - Interaction terms with thresholds
+   - Custom business rules
+
+=== OPERATION EXAMPLES ===
+GOOD (Advanced):
+1. df['high_risk'] = ((df['age'] < 25) & (df['income'] < 30000)).astype(int)
+2. df['income_percentile'] = df['income'].rank(pct=True)
+3. df['payment_behavior'] = np.where(df['late_payments']>0, 'delinquent', 'ontime')
+4. df['value_segment'] = pd.qcut(df['spend'], q=4, labels=['low','medium','high','vip'])
+
+BAD (Too Simple):
+1. df['credit_ratio'] = df['A'] / df['B'] 
+2. df['total'] = df['X'] + df['Y']
 
 === DOMAIN CONTEXT ===
 Primary Domain: {primary_domain}
 Column Descriptions: {column_descriptions}
 
-=== TABLE SUMMARY ===
-{table_summary}
-
 === SAMPLE ROW ===
 {sample_row}
 
-
+=== SPARQL RESULT ===
+{sparql_result}
 
 === PURPOSE ===
 {purpose}
@@ -24,7 +37,7 @@ Column Descriptions: {column_descriptions}
 === EXPECTED COLUMNS ===
 {expected_columns}
 
-=== REASONING PROCESS (for each column) ===
+=== REASONING PROCESS ===
 1. Observe: Identify non-linear patterns or multidimensional relationships
 2. Hypothesize: Propose latent variables requiring 2+ columns or business logic
 3. Infer: Create features needing conditional logic/aggregations
@@ -32,11 +45,11 @@ Column Descriptions: {column_descriptions}
 5. Express: Use format: df['new_col'] = <advanced_operation>
 
 === OUTPUT FORMAT ===
-Provide a JSON object with a single key "columns". The value should be a list of 20 JSON objects, where each object has:
+Provide:
 1. "name": The column name (make it clear and descriptive)
 2. "description": What the column represents and how it explains observed patterns
 3. "generation_method": "generation_method": "Must use format: df['new_column'] = <advanced_operation>. Example: df['age_group'] = pd.cut(df['age'], bins=[...], labels=[...])"
 4. "value_example": Example value based on the sample row
 5. "reasoning": Your step-by-step thinking process for proposing this feature
 
-Return a JSON object with a "columns" key containing a list of 20 suggestions.
+Return a JSON object with these five elements.
