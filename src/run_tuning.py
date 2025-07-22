@@ -10,6 +10,7 @@ import os
 import random
 import pandas as pd
 
+
 def load_init_prompts(folder_path):
     init_prompt = []
     for filename in os.listdir(folder_path):
@@ -19,31 +20,30 @@ def load_init_prompts(folder_path):
                 init_prompt.append(f.read())
     return init_prompt
 
+
 def create_xy_dataframe(df, n_rows=100):
     columns = list(df.columns)
     data = []
     for _ in range(n_rows):
         y_col = random.choice(columns)
         x_cols = [col for col in columns if col != y_col]
-        data.append({'x': x_cols, 'y': y_col})
+        data.append({"x": x_cols, "y": y_col})
     return pd.DataFrame(data)
+
 
 # Usage:
 # folder = os.path.join(os.path.dirname(__file__), "prompts", "augment")
 # init_prompt = load_init_prompts(folder)
 
-task_description = (
-    "The task is to add new columns to a DataFrame based on the provided context with the goal of imroving the evaluation score. "
-)
+task_description = "The task is to add new columns to a DataFrame based on the provided context with the goal of imroving the evaluation score. "
+
 
 def main():
     # Load initial prompts
     folder = os.path.join(os.path.dirname(__file__), "agents", "prompts", "augment")
     init_prompts = load_init_prompts(folder)
 
-    task_description = (
-    "The task is to add new columns to a DataFrame based on the provided context with the goal of improving the evaluation score. "
-    )
+    task_description = "The task is to add new columns to a DataFrame based on the provided context with the goal of improving the evaluation score. "
     # Run the tuning process with custom agents
     api_key = os.getenv("OPENAI_API_KEY")
 
@@ -57,7 +57,7 @@ def main():
         api_key=api_key,
         n_subsamples=30,
     )
-    print('hi')
+    print("hi")
 
     arff_file_path = "./data/dataset_31_credit-g.arff"
 
@@ -69,8 +69,6 @@ def main():
 
     print("Prompts generated:", prompts)
 
-    
 
 if __name__ == "__main__":
     main()
-

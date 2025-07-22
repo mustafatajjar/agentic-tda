@@ -1,4 +1,6 @@
 import arff
+from datetime import datetime
+import numpy as np
 import pandas as pd
 from scipy.io import arff as sparff
 
@@ -12,26 +14,24 @@ def summarize_dataframe(df):
             "missing_values": df.isnull().sum(),
         }
     )
-    
+
     # Add unique values only for non-numeric columns
     non_numeric_cols = df.select_dtypes(exclude="number").columns
     summary["unique_values"] = [
-        df[col].dropna().unique().tolist()
-        if col in non_numeric_cols else None
+        df[col].dropna().unique().tolist() if col in non_numeric_cols else None
         for col in df.columns
     ]
 
-    
     # For numeric columns, set unique_values to "continuous values"
     numeric_cols = df.select_dtypes(include="number").columns
     summary.loc[numeric_cols, "unique_values"] = "continuous values"
-    
+
     # Add stats for numeric columns
     summary.loc[numeric_cols, "mean"] = df[numeric_cols].mean()
     summary.loc[numeric_cols, "min"] = df[numeric_cols].min()
     summary.loc[numeric_cols, "max"] = df[numeric_cols].max()
     summary.loc[numeric_cols, "std"] = df[numeric_cols].std()
-    
+
     return summary
 
 
@@ -73,3 +73,42 @@ def extract_arff_metadata(file_path):
             if line.strip().startswith("%"):
                 comments.append(line.strip("%").strip())
     return "\n".join(comments)
+
+
+def write_to_logs(
+    prompt: str,
+    context: str,
+    aa_prompt: str,
+    aa_response: str,
+    original_eval: float,
+    eval_before_pruning_scores: float,
+    eval_after_pruning_scores,
+):
+    filename = datetime.now().strftime("%Y%m%d_%H%M%S")
+    with open(f"outputs/run_{filename}.txt", "w") as file:
+        file.write("DA Prompt:\n")
+        file.write(prompt)
+        file.write("\n\n")
+        file.write("DA Response:\n")
+        file.write(str(context))
+        file.write("\n\n")
+
+        file.write("\n" * 4)
+
+        file.write("EA Prompt:\n")
+        file.write(aa_prompt)
+        file.write("\n\n")
+        file.write("EA Response:\n")
+        file.write(str(aa_response))
+        file.write("\n\n")
+
+        file.write("\n" * 4)
+
+        file.write("Evaluation before augmenation:\n")
+        file.write(str(original_eval))
+        file.write("\n\n")
+        file.write("Evaluation after augmentation (before pruning):\n")
+        file.write(str(np.mean(eval_before_pruning_scores)))
+        file.write("\n\n")
+        file.write("Evaluation after augmentation (after pruning):\n")
+        file.write(str(np.mean(eval_after_pruning_scores)))

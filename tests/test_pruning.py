@@ -3,6 +3,7 @@ import numpy as np
 
 from src.agents.feature_pruning import prune_features_binary_classification
 
+
 def main():
     np.random.seed(42)
 
@@ -20,17 +21,15 @@ def main():
     feature_stupid = np.random.binomial(1, 0.5, size=n)
 
     # Combine into DataFrame
-    df = pd.DataFrame({
-        "feature_good": feature_good,
-        "feature_stupid": feature_stupid,
-        "label": label
-    })
+    df = pd.DataFrame(
+        {"feature_good": feature_good, "feature_stupid": feature_stupid, "label": label}
+    )
 
     pruned_features = prune_features_binary_classification(
         X=df.drop(columns=["label"]),
         y=df["label"],
         eval_metric="roc_auc",
-        time_limit_per_split=60  # 60 seconds per fold
+        time_limit_per_split=60,  # 60 seconds per fold
     )
     df = df[pruned_features]
 

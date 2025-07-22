@@ -1,6 +1,5 @@
 """Module for classification tasks."""
 
-
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
@@ -29,7 +28,9 @@ class TDATask(BaseTask):
         x_column: str = "x",
         y_column: str = "y",
         n_subsamples: int = 30,
-        eval_strategy: Literal["full", "subsample", "sequential_block", "random_block"] = "full",
+        eval_strategy: Literal[
+            "full", "subsample", "sequential_block", "random_block"
+        ] = "full",
         seed: int = 42,
         metric: Callable = accuracy_score,
         config: "ExperimentConfig" = None,
@@ -74,7 +75,10 @@ class TDATask(BaseTask):
         self.seq_cache = {}  # (prompt, x, y): generating sequence per datapoint
 
     def subsample(
-        self, eval_strategy: Literal["full", "subsample", "sequential_block", "random_block"] = None
+        self,
+        eval_strategy: Literal[
+            "full", "subsample", "sequential_block", "random_block"
+        ] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Subsample the dataset based on the specified parameters.
 
@@ -96,11 +100,16 @@ class TDATask(BaseTask):
 
         elif eval_strategy == "random_block":
             block_id = self.rng.integers(0, len(self.xs) // self.n_subsamples)
-            indices = np.arange(block_id * self.n_subsamples, (block_id + 1) * self.n_subsamples)
+            indices = np.arange(
+                block_id * self.n_subsamples, (block_id + 1) * self.n_subsamples
+            )
             return self.xs[indices], self.ys[indices]
 
         elif eval_strategy == "sequential_block":
-            indices = np.arange(self.block_idx * self.n_subsamples, (self.block_idx + 1) * self.n_subsamples)
+            indices = np.arange(
+                self.block_idx * self.n_subsamples,
+                (self.block_idx + 1) * self.n_subsamples,
+            )
             return self.xs[indices], self.ys[indices]
 
         else:
@@ -214,7 +223,9 @@ class TDATask(BaseTask):
         if n is not None:
             indices = self.rng.choice(len(self.xs), n, replace=False)
         elif frac is not None:
-            indices = self.rng.choice(len(self.xs), int(len(self.xs) * frac), replace=False)
+            indices = self.rng.choice(
+                len(self.xs), int(len(self.xs) * frac), replace=False
+            )
         else:
             raise ValueError("Either n or frac must be specified.")
 

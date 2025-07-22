@@ -7,16 +7,17 @@ from autogluon.core.utils.feature_selection import FeatureSelector
 from autogluon.core.models import AbstractModel
 from autogluon.common.utils.log_utils import set_logger_verbosity
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.simplefilter(action='ignore', category=UserWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action="ignore", category=UserWarning)
 set_logger_verbosity(4)
-    
+
+
 def prune_features_binary_classification(
-    X: "pd.DataFrame", 
-    y: "pd.Series", 
-    *, 
-    time_limit_per_split: int = 600, 
-    eval_metric="accuracy"
+    X: "pd.DataFrame",
+    y: "pd.Series",
+    *,
+    time_limit_per_split: int = 600,
+    eval_metric="accuracy",
 ) -> list:
     """
     Prunes uninformative features using AutoGluon's FeatureSelector with LightGBM.
@@ -30,6 +31,7 @@ def prune_features_binary_classification(
     Returns:
         List of pruned (retained) feature names.
     """
+
     # AutoGluon AbstractModel wrapper for LGBM
     class FEModel(AbstractModel):
         def __init__(self, **kwargs):

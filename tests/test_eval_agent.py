@@ -26,7 +26,8 @@ from src.utils import load_arff_to_dataframe
 
 def main():
     table = load_arff_to_dataframe("data/houses.arff")
-    # evaluate(table)
+    evaluation_agent = EvaluationAgent()
+    evaluation_agent.test_on_holdout(table)
 
     X = table.drop(columns=["binaryClass"])
     y = table["binaryClass"]
@@ -39,6 +40,7 @@ def main():
     rf.fit(X_tr, y_tr)
     auc_holdout = roc_auc_score(y_te, rf.predict_proba(X_te)[:, 1])
     print("Hold‑out AUC:", auc_holdout)
+
 
 if __name__ == "__main__":
     main()

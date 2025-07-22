@@ -21,15 +21,19 @@ class EvaluationAgent:
 
         # Split into train/test once, store indices
         self.train_indices, self.test_indices = self._split_train_test_indices(data)
-        self.kf = KFold(n_splits=self.n_folds, shuffle=True, random_state=self.random_state)
-        self.fold_indices = [test_idx for _, test_idx in self.kf.split(data.iloc[self.train_indices])]
+        self.kf = KFold(
+            n_splits=self.n_folds, shuffle=True, random_state=self.random_state
+        )
+        self.fold_indices = [
+            test_idx for _, test_idx in self.kf.split(data.iloc[self.train_indices])
+        ]
 
     def _split_train_test_indices(self, data):
         train_idx, test_idx = train_test_split(
             np.arange(len(data)),
             test_size=self.test_size,
             random_state=self.random_state,
-            stratify=data[self.label] if self.label in data else None
+            stratify=data[self.label] if self.label in data else None,
         )
         return train_idx, test_idx
 
@@ -68,7 +72,9 @@ class EvaluationAgent:
 
             # Create lgb.Dataset objects
             lgb_train = lgb.Dataset(X_train, y_train, free_raw_data=False)
-            lgb_val = lgb.Dataset(X_val, y_val, reference=lgb_train, free_raw_data=False)
+            lgb_val = lgb.Dataset(
+                X_val, y_val, reference=lgb_train, free_raw_data=False
+            )
 
             params = {
                 "boosting_type": "gbdt",
@@ -104,14 +110,17 @@ class EvaluationAgent:
         train_data[numeric_cols] = train_data[numeric_cols].fillna(0)
         test_data[numeric_cols] = test_data[numeric_cols].fillna(0)
 
-        predictor = TabularPredictor(
-            label=self.label, eval_metric="roc_auc"
-        ).fit(
-            train_data=train_data,presets="good_quality", verbosity=0,time_limit=60*1,
+        predictor = TabularPredictor(label=self.label, eval_metric="roc_auc").fit(
+            train_data=train_data,
+            presets="good_quality",
+            verbosity=0,
+            time_limit=60 * 1,
         )
 
         y_true = test_data[self.label].to_numpy()
-        y_score = predictor.predict_proba(test_data)[predictor.positive_class].to_numpy()
+        y_score = predictor.predict_proba(test_data)[
+            predictor.positive_class
+        ].to_numpy()
         score = roc_auc_score(y_true, y_score)
         return score
 

@@ -1,10 +1,11 @@
 """Helper functions for the usage of the libary."""
 
-
 from typing import TYPE_CHECKING, List, Literal
 
 if TYPE_CHECKING:
-    from promptolution.exemplar_selectors.base_exemplar_selector import BaseExemplarSelector
+    from promptolution.exemplar_selectors.base_exemplar_selector import (
+        BaseExemplarSelector,
+    )
     from promptolution.llms.base_llm import BaseLLM
     from promptolution.optimizers.base_optimizer import BaseOptimizer
     from promptolution.predictors.base_predictor import BasePredictor
@@ -32,7 +33,10 @@ from promptolution.optimizers.templates import (
     OPRO_TEMPLATE,
     OPRO_TEMPLATE_TD,
 )
-from promptolution.predictors.classifier import FirstOccurrenceClassifier, MarkerBasedClassifier
+from promptolution.predictors.classifier import (
+    FirstOccurrenceClassifier,
+    MarkerBasedClassifier,
+)
 from promptolution.tasks.classification_tasks import ClassificationTask
 from promptolution.utils.logging import get_logger
 
@@ -72,9 +76,15 @@ def run_optimization(df: pd.DataFrame, config: "ExperimentConfig") -> List[str]:
     llm = get_llm(config=config)
     predictor = get_predictor(llm, config=config)
 
-    config.task_description = config.task_description + " " + predictor.extraction_description
-    if config.optimizer == "capo" and (config.eval_strategy is None or "block" not in config.eval_strategy):
-        logger.warning("📌 CAPO requires block evaluation strategy. Setting it to 'sequential_block'.")
+    config.task_description = (
+        config.task_description + " " + predictor.extraction_description
+    )
+    if config.optimizer == "capo" and (
+        config.eval_strategy is None or "block" not in config.eval_strategy
+    ):
+        logger.warning(
+            "📌 CAPO requires block evaluation strategy. Setting it to 'sequential_block'."
+        )
         config.eval_strategy = "sequential_block"
 
     task = get_task(df, config)
@@ -89,12 +99,16 @@ def run_optimization(df: pd.DataFrame, config: "ExperimentConfig") -> List[str]:
 
     if hasattr(config, "prepend_exemplars") and config.prepend_exemplars:
         selector = get_exemplar_selector(config.exemplar_selector, task, predictor)
-        prompts = [selector.select_exemplars(p, n_examples=config.n_exemplars) for p in prompts]
+        prompts = [
+            selector.select_exemplars(p, n_examples=config.n_exemplars) for p in prompts
+        ]
 
     return prompts
 
 
-def run_evaluation(df: pd.DataFrame, config: "ExperimentConfig", prompts: List[str]) -> pd.DataFrame:
+def run_evaluation(
+    df: pd.DataFrame, config: "ExperimentConfig", prompts: List[str]
+) -> pd.DataFrame:
     """Run the evaluation phase of the experiment.
 
     Args:
@@ -222,7 +236,13 @@ def get_optimizer(
             if task_description
             else EVOPROMPT_DE_TEMPLATE
         )
-        return EvoPromptDE(predictor=predictor, meta_llm=meta_llm, task=task, prompt_template=template, config=config)
+        return EvoPromptDE(
+            predictor=predictor,
+            meta_llm=meta_llm,
+            task=task,
+            prompt_template=template,
+            config=config,
+        )
 
     if config.optimizer == "evopromptga":
         template = (
@@ -230,17 +250,35 @@ def get_optimizer(
             if task_description
             else EVOPROMPT_GA_TEMPLATE
         )
-        return EvoPromptGA(predictor=predictor, meta_llm=meta_llm, task=task, prompt_template=template, config=config)
+        return EvoPromptGA(
+            predictor=predictor,
+            meta_llm=meta_llm,
+            task=task,
+            prompt_template=template,
+            config=config,
+        )
 
     if config.optimizer == "opro":
-        template = OPRO_TEMPLATE_TD.replace("<task_desc>", task_description) if task_description else OPRO_TEMPLATE
-        return OPRO(predictor=predictor, meta_llm=meta_llm, task=task, prompt_template=template, config=config)
+        template = (
+            OPRO_TEMPLATE_TD.replace("<task_desc>", task_description)
+            if task_description
+            else OPRO_TEMPLATE
+        )
+        return OPRO(
+            predictor=predictor,
+            meta_llm=meta_llm,
+            task=task,
+            prompt_template=template,
+            config=config,
+        )
 
     raise ValueError(f"Unknown optimizer: {config.optimizer}")
 
 
 def get_exemplar_selector(
-    name: Literal["random", "random_search"], task: "BaseTask", predictor: "BasePredictor"
+    name: Literal["random", "random_search"],
+    task: "BaseTask",
+    predictor: "BasePredictor",
 ) -> "BaseExemplarSelector":
     """Factory function to get an exemplar selector based on the given name.
 
@@ -264,7 +302,10 @@ def get_exemplar_selector(
 
 
 def get_predictor(
-    downstream_llm=None, type: Literal["first_occurrence", "marker"] = "marker", *args, **kwargs
+    downstream_llm=None,
+    type: Literal["first_occurrence", "marker"] = "marker",
+    *args,
+    **kwargs,
 ) -> "BasePredictor":
     """Factory function to create and return a predictor instance.
 

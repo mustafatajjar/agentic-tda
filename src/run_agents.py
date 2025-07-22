@@ -7,7 +7,7 @@ from src.agents.planner_agent import PlannerAgent, Action
 from src.agents.domain_agent import DomainAgent
 from src.agents.augment import AugmentAgent
 from src.agents.eval_agent import EvaluationAgent
-from src.utils import arff_to_dataframe, extract_arff_metadata
+from src.utils import arff_to_dataframe, extract_arff_metadata, write_to_logs
 from src.agents.feature_pruning import prune_features_binary_classification
 from sklearn.model_selection import KFold
 
@@ -54,7 +54,6 @@ def main(verbose=True):
         with open(f"outputs/fold_{i+1}_indices.txt", "w") as f:
             f.write("\n".join(map(str, indices)))
 
-
     while True:
         if j > max_augmentations:
             break
@@ -70,7 +69,9 @@ def main(verbose=True):
         # Evaluate before pruning
         print("Evaluating augmented table before pruning...")
         eval_before_pruning_scores = evaluator.nested_cross_val(augmented_df)
-        print(f"Nested CV scores on augmented table (before pruning): {np.mean(eval_before_pruning_scores)}")
+        print(
+            f"Nested CV scores on augmented table (before pruning): {np.mean(eval_before_pruning_scores)}"
+        )
 
         try:
             y = augmented_df[target_column]
@@ -100,48 +101,37 @@ def main(verbose=True):
         # Nested cross-validation on the new table
         eval_after_pruning_scores = evaluator.nested_cross_val(augmented_df_pruned)
         evals.append(np.mean(eval_after_pruning_scores))
-        print(f"Mean evaluation score after pruning: {np.mean(eval_after_pruning_scores)}")
+        print(
+            f"Mean evaluation score after pruning: {np.mean(eval_after_pruning_scores)}"
+        )
 
         # output file with prompt, response and eval
         if verbose:
-            filename = datetime.now().strftime("%Y%m%d_%H%M%S")
-            with open(f"outputs/run_{filename}.txt", "w") as file:
-                file.write("DA Prompt:\n")
-                file.write(prompt)
-                file.write("\n\n")
-                file.write("DA Response:\n")
-                file.write(str(context))
-                file.write("\n\n")
-
-                file.write("\n" * 4)
-
-                file.write("EA Prompt:\n")
-                file.write(aa_prompt)
-                file.write("\n\n")
-                file.write("EA Response:\n")
-                file.write(str(aa_response))
-                file.write("\n\n")
-
-                file.write("\n" * 4)
-
-                file.write("Evaluation before augmenation:\n")
-                file.write(str(original_eval))
-                file.write("\n\n")
-                file.write("Evaluation after augmentation (before pruning):\n")
-                file.write(str(np.mean(eval_before_pruning_scores)))
-                file.write("\n\n")
-                file.write("Evaluation after augmentation (after pruning):\n")
-                file.write(str(np.mean(eval_after_pruning_scores)))
+            write_to_logs(
+                prompt,
+                context,
+                aa_prompt,
+                aa_response,
+                original_eval,
+                eval_before_pruning_scores,
+                eval_after_pruning_scores,
+            )
 
         # Decide whether to keep the changes based on performance
-        if np.mean(eval_after_pruning_scores) > max(evals[:-1]):  # Compare to previous best
-            print("Performance improved. Keeping augmented and pruned table for next iteration.")
+        if np.mean(eval_after_pruning_scores) > max(
+            evals[:-1]
+        ):  # Compare to previous best
+            print(
+                "Performance improved. Keeping augmented and pruned table for next iteration."
+            )
             df = augmented_df_pruned.copy()
             planner_agent.last_improved = True
         else:
-            print("Performance did not improve. Reverting to table from previous iteration.")
+            print(
+                "Performance did not improve. Reverting to table from previous iteration."
+            )
             planner_agent.last_improved = False
-        
+
         j += 1
 
     # Test on holdout after all augmentations

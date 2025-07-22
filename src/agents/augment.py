@@ -20,7 +20,11 @@ class AugmentAgent:
         self.latest_added_columns = []
 
     def add_column(
-        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None, aprompt: str = None
+        self,
+        df: pd.DataFrame,
+        domain_context: dict,
+        augmentation_goal: str = None,
+        aprompt: str = None,
     ) -> Tuple[pd.DataFrame, str, list]:
         """
         Adds multiple meaningful new columns to the DataFrame based on domain context.
@@ -50,7 +54,11 @@ class AugmentAgent:
             else ""
         )
 
-        sparql_result, purpose, expected_columns = "", "", "" # self.sparql_prompting(df, domain_context)
+        sparql_result, purpose, expected_columns = (
+            "",
+            "",
+            "",
+        )  # self.sparql_prompting(df, domain_context)
 
         # Format the prompt with actual values
         prompt = prompt_template.format(
@@ -63,7 +71,7 @@ class AugmentAgent:
             augmentation_section=augmentation_section,
             sparql_result=sparql_result,
             purpose=purpose,
-            expected_columns=expected_columns
+            expected_columns=expected_columns,
         )
 
         response = self.client.chat.completions.create(
@@ -103,179 +111,10 @@ class AugmentAgent:
             print(f"Failed to add columns: {str(e)}")
             return df, prompt, suggestions
 
-    def mapping_binning_augment(
-        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
-    ) -> pd.DataFrame:
-        augmentation = self.get_augmentation(
-            df=df, domain_context=domain_context, augmentation_goal=augmentation_goal
-        )
-        augmented_df = self.make_augmentation(df=df, augmentation=augmentation)
-        return augmented_df
-
-    def get_augmentation(
-        self, df: pd.DataFrame, domain_context: dict, augmentation_goal: str = None
-    ) -> dict:
-        """
-        Computes an augmentation, chosen from Mapping and Binning
-
-        Args:
-            df: Original DataFrame
-            domain_context: Output from DomainAgent.analyze()
-            augmentation_goal: Optional specific goal for the augmentation
-
-        Returns:
-            Augmentation as JSON object from LLM
-        """
-        sample_row = df.sample(1).to_dict(orient="records")[0]
-
-        augmentation_section = (
-            f"=== AUGMENTATION GOAL ===\n{augmentation_goal}"
-            if augmentation_goal
-            else ""
-        )
-
-        prompt = f"""
-        You are a data augmentation assistant. Given a dataset and domain context, your task is to suggest one meaningful new column
-        that can be derived by applying a transformation to one or more existing columns.
-
-        There are two transformation types:
-        - "Mapping": Combine categorical input columns into a new categorical value.
-        - "Binning": Group numerical values into bins and replace with the mean of the bin.
-
-        Rules:
-        - For Mapping: Choose 1 or 2 categorical input columns with <= 10000 value combinations.
-        - The output_column must be a new, descriptive column name.
-
-        === DOMAIN CONTEXT ===
-        Primary Domain: {domain_context.get("primary_domain", "Unknown")}
-        Column Descriptions:
-        {json.dumps(domain_context.get("column_descriptions", {}), indent=2)}
-
-        === SAMPLE ROW ===
-        {json.dumps(sample_row, indent=2)}
-
-        Respond with a JSON object:
-        {{
-        "method": "Mapping",
-        "input_columns": ["col1", "col2", ...],
-        "output_column": "name_of_new_column",
-        "bin_size": null  // leave null for Mapping
-        }}
-        """
-
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-        )
-
-        suggestion = json.loads(response.choices[0].message.content)
-        method = suggestion["method"]
-        if method == "Binning":
-            return suggestion
-        elif method == "Mapping":
-            # Compute a dictionary with unique values for the chosen columns
-            columns = suggestion["input_columns"]
-            unique_values = dict()
-            for column in columns:
-                unique_values[column] = df[column].unique().tolist()
-
-            prompt = f"""
-            You are a data‑augmentation assistant.
-            Given a set of input columns and *every* combination of their unique values,
-            create a mapping that assigns a descriptive category to **each** combination.
-
-            ### Requirements
-            1. Cover **every combination** shown in “UNIQUE VALUE COMBINATIONS”.
-            2. The response **must be valid JSON** (no Markdown fences, no comments).
-            3. Use this exact schema:
-
-            {{
-            "output_column": "name_of_new_column",
-            "mapping": [
-                {{
-                "inputs": ["val_for_col1", "val_for_col2", ...],  // same order as input_columns
-                "value":   "derived_category"                     // a string label
-                }},
-                ...
-            ]
-            }}
-
-            ### Example
-            If `input_columns = ["color", "size"]` and the combinations are  
-            `[["red", "small"], ["blue", "large"]]`, a valid response is:
-
-            {{
-            "output_column": "color_size_category",
-            "mapping": [
-                {{ "inputs": ["red",  "small"], "value": "category1" }},
-                {{ "inputs": ["blue", "large"], "value": "category2" }}
-            ]
-            }}
-
-            ### INPUT COLUMNS
-            {json.dumps(columns)}
-
-            ### UNIQUE VALUE COMBINATIONS
-            {json.dumps(unique_values, indent=2)}
-
-            Return **only** the JSON object that follows the schema above.
-            """
-
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
-            )
-            suggestion = json.loads(response.choices[0].message.content)
-            suggestion["input_columns"] = columns
-            suggestion["method"] = method
-            mapping = suggestion["mapping"]
-            mapping = {tuple(item["inputs"]): item["value"] for item in mapping}
-            suggestion["mapping"] = mapping
-            return suggestion
-
-    def make_augmentation(self, df: pd.DataFrame, augmentation: dict) -> pd.DataFrame:
-        method = augmentation["method"]
-        input_columns = augmentation["input_columns"]
-        output_column = augmentation["output_column"]
-        if method == "Binning":
-            bin_size = augmentation["bin_size"]
-            if len(input_columns) != 1:
-                print(
-                    "Invalid amount of columns specified for binning. No changes made."
-                )
-                return df
-            column = input_columns[0]
-            values = df[column]
-
-            num_bins = int(np.ceil((np.max(values) - np.min(values)) / bin_size)) + 1
-            bins = np.linspace(np.min(values), np.max(values), num_bins)
-            df[output_column] = pd.cut(df[column], bins=bins, include_lowest=True)
-            intervals = df[output_column].cat.categories
-            midpoints = intervals.left + (intervals.right - intervals.left) / 2
-            interval_to_mid = dict(zip(intervals, midpoints))
-            df[output_column] = df[output_column].map(interval_to_mid)
-        elif method == "Mapping":
-            mapping = augmentation["mapping"]
-            map_ser = pd.Series(mapping)
-            map_ser.index = pd.MultiIndex.from_tuples(
-                map_ser.index, names=input_columns
-            )
-
-            tuples = pd.MultiIndex.from_frame(df[input_columns])
-
-            df[output_column] = map_ser.reindex(tuples).values
-        else:
-            print("Invalid augmentation specified. No changes made.")
-        return df
-
     def get_sparql_response(self, query):
         endpoint = "https://qlever.cs.uni-freiburg.de/api/wikidata"
         response = requests.post(
-            endpoint,
-            headers={"Content-Type": "application/sparql-query"},
-            data=query
+            endpoint, headers={"Content-Type": "application/sparql-query"}, data=query
         )
 
         # Check result
@@ -288,11 +127,11 @@ class AugmentAgent:
 
     def sparql_prompting(self, df: pd.DataFrame, domain_context: dict):
         sample_row = df.sample(1).to_dict(orient="records")[0]
-        
+
         # Prepare data
         summary_dict = summarize_dataframe(df).reset_index()
         summary_dict = summary_dict.astype(str).fillna("null").to_dict(orient="records")
-        
+
         # Pre-format JSON
         formatted_summary = json.dumps(summary_dict, indent=2)
 
@@ -362,7 +201,6 @@ class AugmentAgent:
         # }}
         # """
 
-
         # response = self.client.chat.completions.create(
         #     model="gpt-4.1-mini",
         #     messages=[{"role": "user", "content": prompt}],
@@ -371,8 +209,6 @@ class AugmentAgent:
         # response = json.loads(response.choices[0].message.content)
         # query = response["sparql_query"]
         # sparql_response = self.get_sparql_response(query)
-
-
 
         # prompt = f"""
         # You are an expert SPARQL engineer working with the QLever Wikidata endpoint (https://qlever.cs.uni-freiburg.de).
@@ -429,7 +265,6 @@ class AugmentAgent:
         # }}
         # }}
         # LIMIT 1
-
 
         # ────────────────────────── TASK ───────────────────────────────
 
@@ -495,7 +330,6 @@ class AugmentAgent:
             "column": "Column you have used to construct the query"
         }}
         """
-
 
         response = self.client.chat.completions.create(
             model="gpt-4.1-mini",
