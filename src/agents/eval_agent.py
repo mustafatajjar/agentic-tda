@@ -101,7 +101,7 @@ class EvaluationAgent:
             scores.append(score)
         return scores
 
-    def test_on_holdout(self, data):
+    def test_on_holdout(self, data, time_limit=60):
         """Test on the holdout test set (from initial split) using the provided DataFrame."""
         train_data = data.iloc[self.train_indices].copy()
         test_data = data.iloc[self.test_indices].copy()
@@ -112,9 +112,9 @@ class EvaluationAgent:
 
         predictor = TabularPredictor(label=self.label, eval_metric="roc_auc").fit(
             train_data=train_data,
-            presets="good_quality",
+            presets="best_quality",
             verbosity=0,
-            time_limit=60 * 1,
+            time_limit=time_limit,
         )
 
         y_true = test_data[self.label].to_numpy()

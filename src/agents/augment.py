@@ -25,6 +25,7 @@ class AugmentAgent:
         domain_context: dict,
         augmentation_goal: str = None,
         aprompt: str = None,
+        num_columns_to_add: int = 10,  # <-- Added argument with default
     ) -> Tuple[pd.DataFrame, str, list]:
         """
         Adds multiple meaningful new columns to the DataFrame based on domain context.
@@ -60,7 +61,7 @@ class AugmentAgent:
             "",
         )  # self.sparql_prompting(df, domain_context)
 
-        # Format the prompt with actual values
+        # Format the prompt with actual values, including num_columns_to_add
         prompt = prompt_template.format(
             primary_domain=domain_context.get("primary_domain", "Unknown"),
             column_descriptions=json.dumps(
@@ -72,6 +73,7 @@ class AugmentAgent:
             sparql_result=sparql_result,
             purpose=purpose,
             expected_columns=expected_columns,
+            num_columns_to_add=num_columns_to_add,  # <-- Added to prompt
         )
 
         response = self.client.chat.completions.create(

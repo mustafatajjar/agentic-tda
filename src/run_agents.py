@@ -18,6 +18,7 @@ load_dotenv()  # Load API keys
 def main(verbose=True):
     parser = ArgumentParser()
     parser.add_argument("--data_path", type=str, default="./data/dataset_31_credit-g.arff")
+    parser.add_argument("--num_columns_to_add", type=int, default=10, help="Number of columns to add during augmentation")  # <-- Added argument
     args = parser.parse_args()
 
     # 1.  load data set here
@@ -32,7 +33,7 @@ def main(verbose=True):
     domain_agent = DomainAgent()
     augment_agent = AugmentAgent()
     target_column = "class"
-    evaluator = EvaluationAgent(df, label=target_column)
+    evaluator = EvaluationAgent(df, label=target_column, n_folds=10, test_size=0.2)
 
     # Test on holdout before any augmentation
     original_eval = evaluator.test_on_holdout(df)
@@ -69,7 +70,7 @@ def main(verbose=True):
         # TODO: need to finish augment properly + planner agent
         # augmented_df = augment_agent.mapping_binning_augment(df.copy(), domain_context=context)
         augmented_df, aa_prompt, aa_response = augment_agent.add_column(
-            df.copy(), domain_context=context
+            df.copy(), domain_context=context, num_columns_to_add=args.num_columns_to_add  # <-- Pass argument here
         )
 
         # Evaluate before pruning
@@ -138,10 +139,14 @@ def main(verbose=True):
             )
             planner_agent.last_improved = False
 
+        if np.mean(eval_after_pruning_scores) > 0.9999999:
+            print("Perfect score achieved, stopping augmentation.")
+            break
+
         j += 1
 
     # Test on holdout after all augmentations
-    final_eval = evaluator.test_on_holdout(df)
+    final_eval = evaluator.test_on_holdout(df, time_limit=600)
     print("Final holdout evaluation:", final_eval)
 
 

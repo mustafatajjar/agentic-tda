@@ -88,7 +88,7 @@ def prune_features_binary_classification(
         **selection_config,
     )
 
-    print(fs.feature_importance_)
+    #print(fs.feature_importance_)
 
     print(f"Final retained features ({len(candidate_features)}): {candidate_features}")
     removed_features = [f for f in X.columns if f not in candidate_features]
