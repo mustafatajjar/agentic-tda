@@ -3,6 +3,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
+from collections import Counter
+from itertools import chain
 
 from src.agents.planner_agent import PlannerAgent, Action
 from src.agents.domain_agent import DomainAgent
@@ -83,22 +85,23 @@ def main(verbose=True):
         try:
             y = augmented_df[target_column]
             X = augmented_df.drop(columns=[target_column])
-            selected_features = prune_features_binary_classification(
+            
+            selected_features_per_split = prune_features_binary_classification(
                 X, y, time_limit_per_split=200, eval_metric="accuracy"
             )
+            
+            # Combine features selected across splits (majority vote)
+            feature_counts = Counter(chain.from_iterable(selected_features_per_split))
+            num_splits = len(selected_features_per_split)
+            selected_features = [f for f, count in feature_counts.items() if count >= (num_splits // 2 + 1)]
 
-            # Check if any features were actually pruned
             if len(selected_features) < len(X.columns):
-                print(
-                    f"Pruning effective: {len(X.columns)} -> {len(selected_features)} features."
-                )
+                print(f"Pruning effective: {len(X.columns)} -> {len(selected_features)} features.")
                 X_pruned = X[selected_features]
                 augmented_df_pruned = X_pruned.copy()
                 augmented_df_pruned[target_column] = y
             else:
-                print(
-                    "Pruning did not remove any features, using original augmented dataframe."
-                )
+                print("Pruning did not remove any features, using original augmented dataframe.")
                 augmented_df_pruned = augmented_df
 
         except Exception as e:

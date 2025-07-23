@@ -53,3 +53,5 @@ AutogluonModels/
 *.out
 
 outputs/
+
+*.json
