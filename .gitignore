@@ -17,6 +17,7 @@ env/
 
 # Data
 data/*
+grasp/*
 
 # Logs
 logs/
