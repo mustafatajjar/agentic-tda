@@ -24,13 +24,25 @@ class AugmentAgent:
         self,
         df: pd.DataFrame,
         domain_context: dict,
+        history_responses: list = None,
+        selected_features_history: list = None,
         augmentation_goal: str = None,
         aprompt: str = None,
-        num_columns_to_add: int = 10,  # <-- Added argument with default
+        num_columns_to_add: int = 10,
     ) -> Tuple[pd.DataFrame, str, list]:
         """
         Adds multiple meaningful new columns to the DataFrame based on domain context.
         """
+        # Prepare augmentation history string
+        history_responses = history_responses or []
+        selected_features_history = selected_features_history or []
+        augmentation_history = []
+        for i, (resp, feats) in enumerate(zip(history_responses, selected_features_history)):
+            augmentation_history.append(
+                f"Trial {i+1}:\nPrompt: {resp}\nSelected Features: {feats}\n"
+            )
+        augmentation_history_str = "\n".join(augmentation_history) if augmentation_history else "None"
+
         # Use provided prompt if given, else load from file
         if aprompt is not None:
             prompt_template = aprompt
@@ -62,7 +74,7 @@ class AugmentAgent:
             "",
         )  # self.sparql_prompting(df, domain_context)
 
-        # Format the prompt with actual values, including num_columns_to_add
+        # Format the prompt with actual values, including augmentation_history
         prompt = prompt_template.format(
             primary_domain=domain_context.get("primary_domain", "Unknown"),
             column_descriptions=json.dumps(
@@ -74,7 +86,8 @@ class AugmentAgent:
             sparql_result=sparql_result,
             purpose=purpose,
             expected_columns=expected_columns,
-            num_columns_to_add=num_columns_to_add,  # <-- Added to prompt
+            num_columns_to_add=num_columns_to_add,
+            augmentation_history=augmentation_history_str,  # <-- Pass history here
         )
 
         response = self.client.chat.completions.create(

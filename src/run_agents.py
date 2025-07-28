@@ -63,6 +63,9 @@ def main(verbose=True):
         with open(f"outputs/fold_{i+1}_indices.txt", "w") as f:
             f.write("\n".join(map(str, indices)))
 
+    augment_responses = []
+    selected_features_history = []
+
     while True:
         if j > max_augmentations:
             break
@@ -72,8 +75,17 @@ def main(verbose=True):
         # TODO: need to finish augment properly + planner agent
         # augmented_df = augment_agent.mapping_binning_augment(df.copy(), domain_context=context)
         augmented_df, aa_prompt, aa_response = augment_agent.add_column(
-            df.copy(), domain_context=context, num_columns_to_add=args.num_columns_to_add  # <-- Pass argument here
+            df.copy(),
+            domain_context=context,
+            history_responses=augment_responses,                # <-- Pass history of responses
+            selected_features_history=selected_features_history, # <-- Pass history of selected features
+            num_columns_to_add=args.num_columns_to_add
         )
+
+        # Keep history of augment agent responses
+        augment_responses.append({
+            "response": aa_response
+        })
 
         # Evaluate before pruning
         print("Evaluating augmented table before pruning...")
@@ -95,6 +107,9 @@ def main(verbose=True):
             num_splits = len(selected_features_per_split)
             selected_features = [f for f, count in feature_counts.items() if count >= (num_splits // 2 + 1)]
 
+            # Keep history of selected features
+            selected_features_history.append(selected_features)
+
             if len(selected_features) < len(X.columns):
                 print(f"Pruning effective: {len(X.columns)} -> {len(selected_features)} features.")
                 X_pruned = X[selected_features]
@@ -107,6 +122,7 @@ def main(verbose=True):
         except Exception as e:
             print(f"Feature pruning failed: {e}")
             augmented_df_pruned = augmented_df
+            selected_features_history.append([])  # Keep empty if failed
 
         # Nested cross-validation on the new table
         eval_after_pruning_scores = evaluator.nested_cross_val(augmented_df_pruned)
