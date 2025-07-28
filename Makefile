@@ -1,16 +1,17 @@
 ENV_NAME=test
+.PHONY: data
 
 env:
 	git clone https://github.com/ad-freiburg/grasp
-	conda create -n $(ENV_NAME) python=3.12 -y:
-	cd grasp
+	conda create -n $(ENV_NAME) python=3.12 -y
 	conda config --add channels conda-forge
 	conda config --add channels nvidia
 	conda config --add channels pytorch
 	conda config --set channel_priority strict
 	conda install -n $(ENV_NAME) -c pytorch -c nvidia faiss-gpu=1.11.0
-	conda run -n $(ENV_NAME) pip install -e . -r requirements.txt
+	conda run -n test bash -c "cd grasp && pip install -e ."
 	cd ..
+	conda run -n $(ENV_NAME) pip install -r requirements.txt
 
 data:
 	mkdir -p grasp/data/kg-index
