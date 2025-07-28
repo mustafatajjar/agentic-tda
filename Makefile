@@ -1,4 +1,4 @@
-ENV_NAME=test
+ENV_NAME=agentic-tda
 .PHONY: data
 
 env:
