@@ -23,8 +23,11 @@ Column Descriptions: {column_descriptions}
 Below is the history of previous augmentation responses and the features that were selected for each response. Use this to avoid redundancy and to build on prior augmentations.
 {augmentation_history}
 
-=== EXPECTED COLUMNS ===
-{expected_columns}
+=== SPARQL RESULT ===
+{sparql_result}
+
+=== USED COLUMN ===
+{column}
 
 === REASONING PROCESS (for each column) ===
 1. Observe: Identify non-linear patterns or multidimensional relationships

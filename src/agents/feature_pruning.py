@@ -12,10 +12,18 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 
 set_logger_verbosity(verbosity=1)
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.simplefilter(action='ignore', category=UserWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action="ignore", category=UserWarning)
 
-def prune_features_binary_classification(X: "pd.DataFrame", y: "pd.DataFrame", *, time_limit_per_split: int = 3600, cv = "default", eval_metric="accuracy"):
+
+def prune_features_binary_classification(
+    X: "pd.DataFrame",
+    y: "pd.DataFrame",
+    *,
+    time_limit_per_split: int = 3600,
+    cv="default",
+    eval_metric="accuracy",
+):
     """Obtain the optimal set of features for a given dataset by iterative (clever)
     feature pruning with AutoGluon and LightGBM.
 
@@ -36,6 +44,7 @@ def prune_features_binary_classification(X: "pd.DataFrame", y: "pd.DataFrame", *
             Change this to a supported sklearn/autogluon metric to optimize w.r.t.
             your metric of interest.
     """
+
     class FEModel(AbstractModel):
         def __init__(self, **kwargs):
             kwargs.setdefault("path", "models/temp")
@@ -74,19 +83,40 @@ def prune_features_binary_classification(X: "pd.DataFrame", y: "pd.DataFrame", *
         X_train_transformed = feature_generator.fit_transform(X=X_train, y=y_train)
         X_train = X_train[X_train_transformed.columns]
 
-        logger.info(f"AutoGluon Useless Feature Pruning:\tPruned from {X_train.shape[1]} to {X_train_transformed.shape[1]} features.")
+        logger.info(
+            f"AutoGluon Useless Feature Pruning:\tPruned from {X_train.shape[1]} to {X_train_transformed.shape[1]} features."
+        )
 
         st_time = time.time()
         candidate_features = X_train.columns.tolist()
 
-        for selection_step, selection_config in enumerate([
-                dict(n_fi_subsample=10000, prune_threshold="noise", prune_ratio=0.075, stopping_round=3),
-                dict(n_fi_subsample=100000, prune_threshold="none", prune_ratio=0.05, stopping_round=20),
-                dict(n_fi_subsample=500000, prune_threshold="none", prune_ratio=0.025, stopping_round=40),
-            ]):
+        for selection_step, selection_config in enumerate(
+            [
+                dict(
+                    n_fi_subsample=10000,
+                    prune_threshold="noise",
+                    prune_ratio=0.075,
+                    stopping_round=3,
+                ),
+                dict(
+                    n_fi_subsample=100000,
+                    prune_threshold="none",
+                    prune_ratio=0.05,
+                    stopping_round=20,
+                ),
+                dict(
+                    n_fi_subsample=500000,
+                    prune_threshold="none",
+                    prune_ratio=0.025,
+                    stopping_round=40,
+                ),
+            ]
+        ):
 
             rest_time = time_limit - (time.time() - st_time)
-            logger.info(f"AutoGluon Feature Pruning {selection_step} | Time Left: {rest_time:.2f} seconds.")
+            logger.info(
+                f"AutoGluon Feature Pruning {selection_step} | Time Left: {rest_time:.2f} seconds."
+            )
 
             fs = FeatureSelector(
                 model=FEModel(eval_metric=eval_metric),
@@ -109,7 +139,9 @@ def prune_features_binary_classification(X: "pd.DataFrame", y: "pd.DataFrame", *
             X_train = X_train[candidate_features]
             X_test = X_test[candidate_features]
 
-        logger.info(f"AutoGluon Feature Pruning:\tPruned to {X_train.shape[1]} features.")
+        logger.info(
+            f"AutoGluon Feature Pruning:\tPruned to {X_train.shape[1]} features."
+        )
         logger.info(f"Final Features: {candidate_features}")
         optimal_features_per_split.append(candidate_features)
 

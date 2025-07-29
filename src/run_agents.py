@@ -1,10 +1,11 @@
 from argparse import ArgumentParser
+from collections import Counter
 from datetime import datetime
 from dotenv import load_dotenv
-import pandas as pd
-import numpy as np
-from collections import Counter
 from itertools import chain
+import numpy as np
+import os
+import pandas as pd
 
 from src.agents.planner_agent import PlannerAgent, Action
 from src.agents.domain_agent import DomainAgent
@@ -19,8 +20,15 @@ load_dotenv()  # Load API keys
 
 def main(verbose=True):
     parser = ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="./data/dataset_31_credit-g.arff")
-    parser.add_argument("--num_columns_to_add", type=int, default=10, help="Number of columns to add during augmentation")  # <-- Added argument
+    parser.add_argument(
+        "--data_path", type=str, default="./data/dataset_31_credit-g.arff"
+    )
+    parser.add_argument(
+        "--num_columns_to_add",
+        type=int,
+        default=10,
+        help="Number of columns to add during augmentation",
+    )  # <-- Added argument
     args = parser.parse_args()
 
     # 1.  load data set here
@@ -59,6 +67,7 @@ def main(verbose=True):
         fold_indices.append(list(test_index))
 
     # Save each fold's indices to a file
+    os.makedirs("outputs", exist_ok=True)
     for i, indices in enumerate(fold_indices):
         with open(f"outputs/fold_{i+1}_indices.txt", "w") as f:
             f.write("\n".join(map(str, indices)))
@@ -77,15 +86,13 @@ def main(verbose=True):
         augmented_df, aa_prompt, aa_response = augment_agent.add_column(
             df.copy(),
             domain_context=context,
-            history_responses=augment_responses,                # <-- Pass history of responses
-            selected_features_history=selected_features_history, # <-- Pass history of selected features
-            num_columns_to_add=args.num_columns_to_add
+            history_responses=augment_responses,  # <-- Pass history of responses
+            selected_features_history=selected_features_history,  # <-- Pass history of selected features
+            num_columns_to_add=args.num_columns_to_add,
         )
 
         # Keep history of augment agent responses
-        augment_responses.append({
-            "response": aa_response
-        })
+        augment_responses.append({"response": aa_response})
 
         # Evaluate before pruning
         print("Evaluating augmented table before pruning...")
@@ -97,26 +104,34 @@ def main(verbose=True):
         try:
             y = augmented_df[target_column]
             X = augmented_df.drop(columns=[target_column])
-            
+
             selected_features_per_split = prune_features_binary_classification(
                 X, y, time_limit_per_split=200, eval_metric="accuracy"
             )
-            
+
             # Combine features selected across splits (majority vote)
             feature_counts = Counter(chain.from_iterable(selected_features_per_split))
             num_splits = len(selected_features_per_split)
-            selected_features = [f for f, count in feature_counts.items() if count >= (num_splits // 2 + 1)]
+            selected_features = [
+                f
+                for f, count in feature_counts.items()
+                if count >= (num_splits // 2 + 1)
+            ]
 
             # Keep history of selected features
             selected_features_history.append(selected_features)
 
             if len(selected_features) < len(X.columns):
-                print(f"Pruning effective: {len(X.columns)} -> {len(selected_features)} features.")
+                print(
+                    f"Pruning effective: {len(X.columns)} -> {len(selected_features)} features."
+                )
                 X_pruned = X[selected_features]
                 augmented_df_pruned = X_pruned.copy()
                 augmented_df_pruned[target_column] = y
             else:
-                print("Pruning did not remove any features, using original augmented dataframe.")
+                print(
+                    "Pruning did not remove any features, using original augmented dataframe."
+                )
                 augmented_df_pruned = augmented_df
 
         except Exception as e:

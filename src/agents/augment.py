@@ -68,11 +68,7 @@ class AugmentAgent:
             else ""
         )
 
-        sparql_result, purpose, expected_columns = (
-            "",
-            "",
-            "",
-        )  # self.sparql_prompting(df, domain_context)
+        sparql_result, column = self.sparql_prompting(df, domain_context)
 
         # Format the prompt with actual values, including augmentation_history
         prompt = prompt_template.format(
@@ -84,8 +80,7 @@ class AugmentAgent:
             sample_row=json.dumps(sample_row, indent=2),
             augmentation_section=augmentation_section,
             sparql_result=sparql_result,
-            purpose=purpose,
-            expected_columns=expected_columns,
+            column=column,
             num_columns_to_add=num_columns_to_add,
             augmentation_history=augmentation_history_str,  # <-- Pass history here
         )
@@ -159,6 +154,9 @@ class AugmentAgent:
 
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         os.chdir(prev_cwd)
+        print("\n\n\nRESULT:")
+        print(result.stdout)
+        print("\n\n\n")
         result = json.loads(result.stdout)
         return result["result"]
 
@@ -172,37 +170,15 @@ class AugmentAgent:
         # Pre-format JSON
         formatted_summary = json.dumps(summary_dict, indent=2)
 
-        prompt = f"""
-        You are given a table with multiple columns. Your task is:
-        Generate a prompt for an LLM that will make SPARQL queries with GRASP.
-        Query precise information about one column in the table and ask about the corresponding information.
-        That is, use a relation that you assume to be relevant to the column you are querying, and query this information only.
-        Plase find the unique values in the corresponding column of the dataset summary.
-        Note that the sparql query is not able to access the dataset summary, to you need to provide the unique values in the prompt.
+        prompt_path = os.path.join(
+            os.path.dirname(__file__), "prompts", "sparql_prompt.txt"
+        )
+        with open(prompt_path, "r") as file:
+            prompt_template = file.read()
 
-        ─────────────────────── DOMAIN CONTEXT ─────────────────────────
-        {domain_context}
-
-        ─────────────────────── DATASET SUMMARY ────────────────────────
-        {formatted_summary}
-
-        ──────────────────────── FIRST ROW SAMPLE ──────────────────────
-        {sample_row}
-
-        ________________________ EXAMPLES _______________________________
-
-        "Return the nationalities of Barack Obama, Angela Merkel, Emmanuel Macron and Viktor Orban."
-        "Query the language spoken in the countries Burkina Faso, Uzbekistan, Argentina and Laos."
-        "Give the population of the following cities: New York, Los Angeles, Chicago, Houston, Phoenix."
-
-        Return only this JSON object (no markdown fences):
-
-        {{
-            "prompt": "<your prompt here>",
-            "column": "Column you have queried information about" (str)
-        }}
-        """
-        print(prompt)
+        prompt = prompt_template.format(domain_context=domain_context,
+                                        formatted_summary=formatted_summary,
+                                        sample_row=sample_row)
 
         response = self.client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -211,6 +187,7 @@ class AugmentAgent:
         )
         response = json.loads(response.choices[0].message.content)
         prompt = response["prompt"]
+        print(prompt)
         column = response["column"]
         response = self.get_grasp_response(prompt)
 
