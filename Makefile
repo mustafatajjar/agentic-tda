@@ -9,7 +9,7 @@ env:
 	conda config --add channels pytorch
 	conda config --set channel_priority strict
 	conda install -n $(ENV_NAME) -c pytorch -c nvidia faiss-gpu=1.11.0
-	conda run -n test bash -c "cd grasp && pip install -e ."
+	conda run -n $(ENV_NAME) bash -c "cd grasp && pip install -e ."
 	cd ..
 	conda run -n $(ENV_NAME) pip install -r requirements.txt
 
