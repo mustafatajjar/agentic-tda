@@ -1,9 +1,17 @@
 You are given a table with multiple columns. Your task is:
 Generate a prompt for an LLM that will make SPARQL queries with GRASP.
 Query precise information about one column in the table and ask about the corresponding information.
+This column should be containing information, that you would assume to be featured in a knowledge graph,
+like cities, people, jobs, brands...
+
 That is, use a relation that you assume to be relevant to the column you are querying, and query this information only.
+Make sure to use a meaningful relation and express it precisely.
+
 Plase find the unique values in the corresponding column of the dataset summary.
 Note that the sparql query is not able to access the dataset summary, to you need to provide the unique values in the prompt.
+
+You do not have to explain GRASP, that it should make a SPARQL query or anything similar, it does that automatically.
+
 
 ─────────────────────── DOMAIN CONTEXT ─────────────────────────
 {domain_context}
@@ -13,6 +21,14 @@ Note that the sparql query is not able to access the dataset summary, to you nee
 
 ──────────────────────── FIRST ROW SAMPLE ──────────────────────
 {sample_row}
+
+____________ COLUMNS QUERIED IN PREVIOUS ITERATIONS ________________________
+{queried_columns}
+
+
+____________ RELATIONS QUERIED IN PREVIOUS ITERATIONS ________________________
+{queried_relations}
+
 
 ________________________ EXAMPLES _______________________________
 
@@ -25,4 +41,5 @@ Return only this JSON object (no markdown fences):
 {{
     "prompt": "<your prompt here>",
     "column": "Column you have queried information about" (str)
+    "relation": "Relation you used to find out about the column" (str)
 }}

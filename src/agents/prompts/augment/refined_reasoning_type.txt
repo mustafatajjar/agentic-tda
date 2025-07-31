@@ -19,9 +19,6 @@ Column Descriptions: {column_descriptions}
 === SPARQL RESULT ===
 {sparql_result}
 
-=== PURPOSE ===
-{purpose}
-
 === EXPECTED COLUMNS ===
 {expected_columns}
 

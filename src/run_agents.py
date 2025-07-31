@@ -180,7 +180,7 @@ def main(verbose=True):
         j += 1
 
     # Test on holdout after all augmentations
-    final_eval = evaluator.test_on_holdout(df, time_limit=600)
+    final_eval = evaluator.test_on_holdout(df, time_limit=30)
     print("Final holdout evaluation:", final_eval)
 
 

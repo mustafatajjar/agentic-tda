@@ -16,9 +16,6 @@ Column Descriptions: {column_descriptions}
 === SAMPLE ROW ===
 {sample_row}
 
-=== PURPOSE ===
-{purpose}
-
 === AUGMENTATION HISTORY ===
 Below is the history of previous augmentation responses and the features that were selected for each response. Use this to avoid redundancy and to build on prior augmentations.
 {augmentation_history}

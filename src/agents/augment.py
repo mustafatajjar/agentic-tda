@@ -19,6 +19,8 @@ class AugmentAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.latest_added_columns = []
+        self.queried_columns = []
+        self.queried_relations = []
 
     def add_column(
         self,
@@ -154,9 +156,9 @@ class AugmentAgent:
 
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         os.chdir(prev_cwd)
-        print("\n\n\nRESULT:")
-        print(result.stdout)
-        print("\n\n\n")
+        if not result.stdout:
+            print("No output from GRASP command.\n" * 100)
+            return ""
         result = json.loads(result.stdout)
         return result["result"]
 
@@ -178,7 +180,9 @@ class AugmentAgent:
 
         prompt = prompt_template.format(domain_context=domain_context,
                                         formatted_summary=formatted_summary,
-                                        sample_row=sample_row)
+                                        sample_row=sample_row,
+                                        queried_columns=self.queried_columns,
+                                        queried_relations=self.queried_relations)
 
         response = self.client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -189,6 +193,9 @@ class AugmentAgent:
         prompt = response["prompt"]
         print(prompt)
         column = response["column"]
+        relation = response["relation"]
+        self.queried_columns.append(column)
+        self.queried_relations.append(relation)
         response = self.get_grasp_response(prompt)
 
         return response, column
