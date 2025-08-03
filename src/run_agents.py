@@ -28,17 +28,17 @@ def main(verbose=True):
         type=int,
         default=10,
         help="Number of columns to add during augmentation",
-    )  # <-- Added argument
+    )
     args = parser.parse_args()
 
-    # 1.  load data set here
+    # Load data set
     arff_file_path = args.data_path
     print(f"Loading ARFF file from: {arff_file_path}")
 
     metadata = extract_arff_metadata(arff_file_path)
     df = arff_to_dataframe(arff_file_path)
 
-    # 2.  Initialize agents
+    # Initialize agents
     planner_agent = PlannerAgent()
     domain_agent = DomainAgent()
     augment_agent = AugmentAgent()

@@ -39,11 +39,15 @@ class AugmentAgent:
         history_responses = history_responses or []
         selected_features_history = selected_features_history or []
         augmentation_history = []
-        for i, (resp, feats) in enumerate(zip(history_responses, selected_features_history)):
+        for i, (resp, feats) in enumerate(
+            zip(history_responses, selected_features_history)
+        ):
             augmentation_history.append(
                 f"Trial {i+1}:\nPrompt: {resp}\nSelected Features: {feats}\n"
             )
-        augmentation_history_str = "\n".join(augmentation_history) if augmentation_history else "None"
+        augmentation_history_str = (
+            "\n".join(augmentation_history) if augmentation_history else "None"
+        )
 
         # Use provided prompt if given, else load from file
         if aprompt is not None:
@@ -141,11 +145,7 @@ class AugmentAgent:
     def get_grasp_response(self, query: str) -> str:
         prev_cwd = os.getcwd()
         os.chdir("grasp")
-        cmd = [
-            "grasp",
-            "--config", "configs/single_kg.yaml",
-            "--question", query
-        ]
+        cmd = ["grasp", "--config", "configs/single_kg.yaml", "--question", query]
 
         env = {
             **os.environ,
@@ -178,11 +178,13 @@ class AugmentAgent:
         with open(prompt_path, "r") as file:
             prompt_template = file.read()
 
-        prompt = prompt_template.format(domain_context=domain_context,
-                                        formatted_summary=formatted_summary,
-                                        sample_row=sample_row,
-                                        queried_columns=self.queried_columns,
-                                        queried_relations=self.queried_relations)
+        prompt = prompt_template.format(
+            domain_context=domain_context,
+            formatted_summary=formatted_summary,
+            sample_row=sample_row,
+            queried_columns=self.queried_columns,
+            queried_relations=self.queried_relations,
+        )
 
         response = self.client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -191,7 +193,6 @@ class AugmentAgent:
         )
         response = json.loads(response.choices[0].message.content)
         prompt = response["prompt"]
-        print(prompt)
         column = response["column"]
         relation = response["relation"]
         self.queried_columns.append(column)

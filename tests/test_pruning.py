@@ -5,6 +5,7 @@ from src.agents.feature_pruning import prune_features_binary_classification
 from collections import Counter
 from itertools import chain
 
+
 def generate_data(seed, n=200):
     np.random.seed(seed)
 
@@ -19,11 +20,10 @@ def generate_data(seed, n=200):
     # Useless/noisy feature
     feature_stupid = np.random.binomial(1, 0.5, size=n)
 
-    return pd.DataFrame({
-        "feature_good": feature_good,
-        "feature_stupid": feature_stupid,
-        "label": label
-    })
+    return pd.DataFrame(
+        {"feature_good": feature_good, "feature_stupid": feature_stupid, "label": label}
+    )
+
 
 def main(verbosity=True):
     seeds = range(10)
@@ -36,11 +36,13 @@ def main(verbosity=True):
             X=df.drop(columns=["label"]),
             y=df["label"],
             eval_metric="roc_auc",
-            time_limit_per_split=30
+            time_limit_per_split=30,
         )
         feature_counts = Counter(chain.from_iterable(selected_features_per_split))
         num_splits = len(selected_features_per_split)
-        selected_features = [f for f, count in feature_counts.items() if count >= (num_splits // 2 + 1)]
+        selected_features = [
+            f for f, count in feature_counts.items() if count >= (num_splits // 2 + 1)
+        ]
         print(f"Selected features: {selected_features}")
         results.append(selected_features)
 
@@ -49,6 +51,7 @@ def main(verbosity=True):
     print("\n=== Feature Selection Frequency Across Seeds ===")
     for feature, count in counts.items():
         print(f"{feature}: {count}/10")
+
 
 if __name__ == "__main__":
     main()
