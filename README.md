@@ -32,3 +32,11 @@ python -m src.run_agents --data_path ./data/your_dataset --num_columns_to_add 10
 - `--num_columns_to_add`: Number of columns to add during each augmentation iteration (default: 10)
 
 ## References
+[1] **GRASP: Generic Reasoning and SPARQL generation across Knowledge Graphs**  
+    GitHub: [github.com/ad-freiburg/grasp](https://github.com/ad-freiburg/grasp)
+
+[2] **Tabrepo: A Living Benchmark for Machine Learning on Tabular Data**  
+    GitHub: [github.com/autogluon/tabrepo](https://github.com/autogluon/tabrepo)
+
+[3] **TabPFN: A Transformer that Solves Small Tabular Classification Problems in a Second**  
+    GitHub: [github.com/PriorLabs/TabPFN](https://github.com/PriorLabs/TabPFN)
