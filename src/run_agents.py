@@ -44,6 +44,9 @@ def main(verbose=True):
     augment_agent = AugmentAgent()
     evaluator = EvaluationAgent(df, label=target_column, n_folds=10, test_size=0.2)
 
+    target_column = 'class'
+    model = "tabpfn"  # Specify the model to use for evaluation
+
     # Test on holdout before any augmentation
     # original_eval = evaluator.test_on_holdout(df,30*60)  # 30 minutes time limit
     original_eval = np.mean(evaluator.test_on_holdout_kfold_tabpfn(df, n_splits=10, device="cuda",method=model))
