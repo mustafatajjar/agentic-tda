@@ -56,3 +56,9 @@ AutogluonModels/
 outputs/
 
 *.json
+all_augmented_columns.csv
+.gitignore
+all_augmented_columns1.csv
+eval_barplot_4k.png
+top4_groups_dotmatrix_4k.png
+src/experiments.txt

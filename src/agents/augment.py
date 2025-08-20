@@ -31,6 +31,7 @@ class AugmentAgent:
         augmentation_goal: str = None,
         aprompt: str = None,
         num_columns_to_add: int = 10,
+        target_column: str = None,
     ) -> Tuple[pd.DataFrame, str, list]:
         """
         Adds multiple meaningful new columns to the DataFrame based on domain context.
@@ -74,7 +75,7 @@ class AugmentAgent:
             else ""
         )
 
-        sparql_result, column = self.sparql_prompting(df, domain_context)
+        # sparql_result, column = self.sparql_prompting(df, domain_context)
 
         # Format the prompt with actual values, including augmentation_history
         prompt = prompt_template.format(
@@ -85,8 +86,8 @@ class AugmentAgent:
             table_summary=formatted_summary,
             sample_row=json.dumps(sample_row, indent=2),
             augmentation_section=augmentation_section,
-            sparql_result=sparql_result,
-            column=column,
+            sparql_result='none',
+            column='column',
             num_columns_to_add=num_columns_to_add,
             augmentation_history=augmentation_history_str,  # <-- Pass history here
         )
@@ -104,6 +105,10 @@ class AugmentAgent:
             added_columns = []
             for suggestion in suggestions:
                 col_name = suggestion["name"]
+                # Exclude columns that use the target column in their generation method
+                if target_column and target_column in suggestion.get("generation_method", ""):
+                    print(f"Skipping column '{col_name}' because it uses the target column '{target_column}'.")
+                    continue
                 if col_name in augmented_df.columns:
                     print(f"Column '{col_name}' already exists - skipping")
                 else:
@@ -123,10 +128,10 @@ class AugmentAgent:
                     added_columns.append(col_name)
 
             self.latest_added_columns = added_columns
-            return augmented_df, prompt, suggestions
+            return augmented_df, prompt, suggestions, True
         except Exception as e:
             print(f"Failed to add columns: {str(e)}")
-            return df, prompt, suggestions
+            return df, prompt, suggestions, False
 
     def get_sparql_response(self, query):
         endpoint = "https://qlever.cs.uni-freiburg.de/api/wikidata"
@@ -157,7 +162,7 @@ class AugmentAgent:
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         os.chdir(prev_cwd)
         if not result.stdout:
-            print("No output from GRASP command.\n" * 100)
+            # print("No output from GRASP command.\n" * 100)
             return ""
         result = json.loads(result.stdout)
         return result["result"]

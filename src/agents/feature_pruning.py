@@ -9,6 +9,10 @@ from autogluon.core.utils.feature_selection import FeatureSelector, logger
 from autogluon.core.models import AbstractModel
 from autogluon.common.utils.log_utils import set_logger_verbosity
 from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.feature_selection import SequentialFeatureSelector
+from tabpfn import TabPFNClassifier
+
+
 
 set_logger_verbosity(verbosity=1)
 
@@ -153,3 +157,61 @@ def prune_features_binary_classification(
         json.dump(optimal_features_per_split, file)
 
     return optimal_features_per_split
+
+
+def prune_features_sfs(
+    X: pd.DataFrame,
+    y: pd.Series,
+    direction: str = "forward",
+    scoring: str = "roc_auc",
+    cv=3,
+    device: str = "cuda",
+    method: str = "tabpfn",  # "tabpfn" or "lightgbm"
+):
+    """
+    Prune features using sklearn's SequentialFeatureSelector with TabPFN or LightGBM as the estimator.
+
+    Args:
+        X: Input features (DataFrame).
+        y: Target variable (Series).
+        n_features_to_select: Number of features to select (default: half of features).
+        direction: "forward" or "backward" selection.
+        scoring: Scoring metric for selection.
+        cv: Number of cross-validation folds.
+        device: "cpu" or "cuda" for TabPFN.
+        method: "tabpfn" or "lightgbm"
+
+    Returns:
+        selected_features: List of selected feature names.
+    """
+    # Ensure all non-numeric columns are encoded as categorical codes
+    X_enc = X.copy()
+    for col in X_enc.columns:
+        if not pd.api.types.is_numeric_dtype(X_enc[col]):
+            X_enc[col] = pd.Categorical(X_enc[col]).codes
+    X_enc = X_enc.astype(np.float64)
+
+
+    if method == "tabpfn":
+        estimator = TabPFNClassifier(device='cuda')
+    elif method == "lightgbm":
+        estimator = LGBMClassifier(
+            verbose=-1,
+            random_state=42,
+        )
+    else:
+        raise ValueError("method must be 'tabpfn' or 'lightgbm'")
+
+    sfs = SequentialFeatureSelector(
+        estimator,
+        scoring=scoring,
+        cv=cv,
+        n_jobs=8,
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=UserWarning)
+        sfs.fit(X_enc, y)
+    selected_features = X_enc.columns[sfs.get_support()].tolist()
+
+    return selected_features
