@@ -12,7 +12,7 @@ from src.agents.domain_agent import DomainAgent
 from src.agents.augment import AugmentAgent
 from src.agents.eval_agent import EvaluationAgent
 from src.utils import arff_to_dataframe, extract_arff_metadata, write_to_logs
-from src.agents.feature_pruning import prune_features_binary_classification,prune_features_sfs
+from src.agents.utils import prune_features_binary_classification,prune_features_sfs
 from sklearn.model_selection import KFold
 
 load_dotenv()  # Load API keys

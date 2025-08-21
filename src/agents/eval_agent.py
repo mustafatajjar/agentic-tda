@@ -220,30 +220,3 @@ class EvaluationAgent:
     def get_train_test_indices(self):
         """Return the train and test indices from the initial split."""
         return self.train_indices, self.test_indices
-
-class TabPFNSubsampleWrapper:
-    """
-    A wrapper for TabPFNClassifier that subsamples the training data to 10,000 rows if more are provided.
-    """
-    def __init__(self, device="cpu", **kwargs):
-        self.device = device
-        self.kwargs = kwargs
-        self.model = TabPFNClassifier(device=device, **kwargs)
-
-    def fit(self, X, y):
-        # Subsample if more than 10,000 rows
-        if X.shape[0] > 10000:
-            idx = np.random.choice(X.shape[0], 10000, replace=False)
-            X_sub = X[idx] if isinstance(X, np.ndarray) else X.iloc[idx]
-            y_sub = y[idx] if isinstance(y, np.ndarray) else y.iloc[idx]
-        else:
-            X_sub = X
-            y_sub = y
-        self.model.fit(X_sub, y_sub)
-        return self
-
-    def predict(self, X):
-        return self.model.predict(X)
-
-    def predict_proba(self, X):
-        return self.model.predict_proba(X)
