@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from src.Tuning.tuning import run_experiment
 from promptolution.utils import ExperimentConfig
 from src.utils import arff_to_dataframe, extract_arff_metadata
-from src.agents.feature_pruning import prune_features_binary_classification
+from src.agents.utils import prune_features_binary_classification
 
 load_dotenv()  # Load API keys
 

@@ -1,16 +1,10 @@
-from autogluon.core.data import LabelCleaner
-from autogluon.core.models import BaggedEnsembleModel
-from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-from autogluon.tabular import TabularPredictor
-import lightgbm as lgb
 from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import KFold, train_test_split
 import numpy as np
 import pandas as pd
 from tabpfn import TabPFNClassifier
-from skrub import TableVectorizer
-from tabicl import TabICLClassifier
+
 from sklearn.pipeline import make_pipeline
 
 pd.set_option("mode.use_inf_as_na", True)
@@ -164,7 +158,9 @@ class EvaluationAgent:
         else:
             raise ValueError(f"Unknown method: {method}")
 
-    def test_on_holdout_kfold_tabpfn(self, data=None, n_splits=5, device="cpu", method="tabpfn"):
+    def test_on_holdout_kfold_tabpfn(
+        self, data=None, n_splits=5, device="cpu", method="tabpfn"
+    ):
         """
         Perform KFold cross-validation on all the data using TabPFN or LightGBM.
         Returns a list of ROC AUC scores for each fold.

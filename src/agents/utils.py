@@ -13,7 +13,6 @@ from sklearn.feature_selection import SequentialFeatureSelector
 from tabpfn import TabPFNClassifier
 
 
-
 set_logger_verbosity(verbosity=1)
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
@@ -191,9 +190,8 @@ def prune_features_sfs(
             X_enc[col] = pd.Categorical(X_enc[col]).codes
     X_enc = X_enc.astype(np.float64)
 
-
     if method == "tabpfn":
-        estimator = TabPFNClassifier(device='cuda')
+        estimator = TabPFNClassifier(device="cuda")
     elif method == "lightgbm":
         estimator = LGBMClassifier(
             verbose=-1,

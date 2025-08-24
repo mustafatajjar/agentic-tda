@@ -86,8 +86,8 @@ class AugmentAgent:
             table_summary=formatted_summary,
             sample_row=json.dumps(sample_row, indent=2),
             augmentation_section=augmentation_section,
-            sparql_result='none',
-            column='column',
+            sparql_result="none",
+            column="column",
             num_columns_to_add=num_columns_to_add,
             augmentation_history=augmentation_history_str,  # <-- Pass history here
         )
@@ -106,8 +106,12 @@ class AugmentAgent:
             for suggestion in suggestions:
                 col_name = suggestion["name"]
                 # Exclude columns that use the target column in their generation method
-                if target_column and target_column in suggestion.get("generation_method", ""):
-                    print(f"Skipping column '{col_name}' because it uses the target column '{target_column}'.")
+                if target_column and target_column in suggestion.get(
+                    "generation_method", ""
+                ):
+                    print(
+                        f"Skipping column '{col_name}' because it uses the target column '{target_column}'."
+                    )
                     continue
                 if col_name in augmented_df.columns:
                     print(f"Column '{col_name}' already exists - skipping")
