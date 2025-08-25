@@ -52,16 +52,14 @@ class TDAAgent:
 
         # Test on holdout before any augmentation
         original_eval = np.mean(
-            self.evaluator.test_on_holdout_kfold_tabpfn(
-                self.df, n_splits=self.n_folds, device="cuda", method=self.model
+            self.evaluator.test_on_holdout_kfold(
+                self.df, n_splits=self.n_folds, device="cuda"
             )
         )
         print("Original holdout evaluation:", original_eval)
 
         # Nested cross-validation before any augmentation
-        original_nested_cv_scores = self.evaluator.nested_cross_val(
-            self.df, method=self.model
-        )
+        original_nested_cv_scores = self.evaluator.nested_cross_val(self.df)
         print("Original nested CV scores:", np.mean(original_nested_cv_scores))
         evals = [np.mean(original_nested_cv_scores)]
 
@@ -108,9 +106,7 @@ class TDAAgent:
 
             # Evaluate before pruning
             print("Evaluating augmented table before pruning...")
-            eval_before_pruning_scores = self.evaluator.nested_cross_val(
-                augmented_df, method=self.model
-            )
+            eval_before_pruning_scores = self.evaluator.nested_cross_val(augmented_df)
             print(
                 f"Nested CV scores on augmented table (before pruning): {np.mean(eval_before_pruning_scores)}"
             )
@@ -167,7 +163,7 @@ class TDAAgent:
 
             # Nested cross-validation on the new table
             eval_after_pruning_scores = self.evaluator.nested_cross_val(
-                augmented_df_pruned, method=self.model
+                augmented_df_pruned,
             )
             evals.append(np.mean(eval_after_pruning_scores))
             print(
@@ -210,7 +206,9 @@ class TDAAgent:
         # Test on holdout after all augmentations
         final_eval = np.mean(
             self.evaluator.test_on_holdout_kfold_tabpfn(
-                df, n_splits=self.n_folds, device="cuda", method=self.model
+                df,
+                n_splits=self.n_folds,
+                device="cuda",
             )
         )
 

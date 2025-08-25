@@ -5,13 +5,19 @@ import numpy as np
 import pandas as pd
 from tabpfn import TabPFNClassifier
 
-from sklearn.pipeline import make_pipeline
-
 pd.set_option("mode.use_inf_as_na", True)
 
 
 class EvaluationAgent:
-    def __init__(self, data, label="class", test_size=0.2, n_folds=5, random_state=42):
+    def __init__(
+        self,
+        data,
+        label="class",
+        test_size=0.2,
+        n_folds=5,
+        random_state=42,
+        model="tabpfn",
+    ):
         self.data = data
         self.label = label
         self.test_size = test_size
@@ -27,6 +33,19 @@ class EvaluationAgent:
             test_idx for _, test_idx in self.kf.split(data.iloc[self.train_indices])
         ]
 
+        # Instantiate the model once in the constructor
+        if model == "lightgbm":
+            self.model = LGBMClassifier(
+                verbose=-1,
+                random_state=self.random_state,
+            )
+            self.use_values = False  # Use DataFrame directly
+        elif model == "tabpfn":
+            self.model = TabPFNClassifier(device="cuda")
+            self.use_values = True  # Use .values for TabPFN
+        else:
+            raise ValueError(f"Unknown model: {model}")
+
     def _split_train_test_indices(self, data):
         train_idx, test_idx = train_test_split(
             np.arange(len(data)),
@@ -36,8 +55,8 @@ class EvaluationAgent:
         )
         return train_idx, test_idx
 
-    def nested_cross_val(self, data, method="tabpfn"):
-        """Performs nested cross-validation on the training data using the specified method."""
+    def nested_cross_val(self, data):
+        """Performs nested cross-validation on the training data using the specified model."""
         scores = []
         train_data = data.iloc[self.train_indices].reset_index(drop=True)
         X = train_data.drop(columns=[self.label])
@@ -69,32 +88,22 @@ class EvaluationAgent:
             if y_val.dtype == "object":
                 y_val = pd.Categorical(y_val).codes
 
-            if method == "lightgbm":
-                model = LGBMClassifier(
-                    verbose=-1,
-                    random_state=self.random_state,
-                )
-                model.fit(X_train, y_train)
-                y_score = model.predict_proba(X_val)[:, 1]
-                score = roc_auc_score(y_val, y_score)
-                scores.append(score)
-
-            elif method == "tabpfn":
-                clf = TabPFNClassifier(device="cuda")
-                clf.fit(X_train.values, y_train)
-                y_score = clf.predict_proba(X_val.values)[:, 1]
-                score = roc_auc_score(y_val, y_score)
-                scores.append(score)
-
+            # Fit and predict using the instantiated model
+            if self.use_values:
+                self.model.fit(X_train.values, y_train)
+                y_score = self.model.predict_proba(X_val.values)[:, 1]
             else:
-                raise ValueError(f"Unknown method: {method}")
+                self.model.fit(X_train, y_train)
+                y_score = self.model.predict_proba(X_val)[:, 1]
+            score = roc_auc_score(y_val, y_score)
+            scores.append(score)
 
         return scores
 
-    def test_on_holdout(self, data, time_limit=60, method="tabpfn"):
+    def test_on_holdout(self, data, time_limit=60):
         """
         Test on the holdout test set (from initial split) using the provided DataFrame.
-        method: "lightgbm" or "tabpfn"
+        Uses the model specified in the constructor.
         """
         train_data = data.iloc[self.train_indices].copy()
         test_data = data.iloc[self.test_indices].copy()
@@ -103,68 +112,38 @@ class EvaluationAgent:
         train_data[numeric_cols] = train_data[numeric_cols].fillna(0)
         test_data[numeric_cols] = test_data[numeric_cols].fillna(0)
 
-        if method == "lightgbm":
-            X_train = train_data.drop(columns=[self.label])
-            y_train = train_data[self.label]
-            X_test = test_data.drop(columns=[self.label])
-            y_test = test_data[self.label]
+        X_train = train_data.drop(columns=[self.label])
+        y_train = train_data[self.label]
+        X_test = test_data.drop(columns=[self.label])
+        y_test = test_data[self.label]
 
-            # Convert object columns to category
-            for col in X_train.columns:
-                if X_train[col].dtype == "object":
-                    X_train[col] = X_train[col].astype("category")
-                    X_test[col] = X_test[col].astype("category")
+        # Convert object columns to category
+        for col in X_train.columns:
+            if X_train[col].dtype == "object":
+                X_train[col] = X_train[col].astype("category")
+                X_test[col] = X_test[col].astype("category")
 
-            # Convert label to numeric if needed
-            if y_train.dtype == "object":
-                y_train = pd.Categorical(y_train).codes
-            if y_test.dtype == "object":
-                y_test = pd.Categorical(y_test).codes
+        # Convert label to numeric if needed
+        if y_train.dtype == "object":
+            y_train = pd.Categorical(y_train).codes
+        if y_test.dtype == "object":
+            y_test = pd.Categorical(y_test).codes
 
-            model = LGBMClassifier(
-                verbose=-1,
-                random_state=self.random_state,
-            )
-
-            model.fit(X_train, y_train)
-            y_score = model.predict_proba(X_test)[:, 1]
-            score = roc_auc_score(y_test, y_score)
-            return score
-
-        elif method == "tabpfn":
-            X_train = train_data.drop(columns=[self.label])
-            y_train = train_data[self.label]
-            X_test = test_data.drop(columns=[self.label])
-            y_test = test_data[self.label]
-
-            # Convert categorical columns to category dtype
-            for col in X_train.columns:
-                if X_train[col].dtype == "object":
-                    X_train[col] = X_train[col].astype("category")
-                    X_test[col] = X_test[col].astype("category")
-
-            # Convert label to numeric if needed
-            if y_train.dtype == "object":
-                y_train = pd.Categorical(y_train).codes
-            if y_test.dtype == "object":
-                y_test = pd.Categorical(y_test).codes
-
-            clf = TabPFNClassifier(device="cuda")
-            clf.fit(X_train.values, y_train)
-            y_score = clf.predict_proba(X_test.values)[:, 1]
-            score = roc_auc_score(y_test, y_score)
-            return score
-
+        # Fit and predict using the instantiated model
+        if self.use_values:
+            self.model.fit(X_train.values, y_train)
+            y_score = self.model.predict_proba(X_test.values)[:, 1]
         else:
-            raise ValueError(f"Unknown method: {method}")
+            self.model.fit(X_train, y_train)
+            y_score = self.model.predict_proba(X_test)[:, 1]
+        score = roc_auc_score(y_test, y_score)
+        return score
 
-    def test_on_holdout_kfold_tabpfn(
-        self, data=None, n_splits=5, device="cpu", method="tabpfn"
-    ):
+    def test_on_holdout_kfold(self, data=None, n_splits=5, device="cpu"):
         """
         Perform KFold cross-validation on all the data using TabPFN or LightGBM.
         Returns a list of ROC AUC scores for each fold.
-        method: "tabpfn" or "lightgbm"
+        Uses the model specified in the constructor.
         """
         if data is None:
             data = self.data
@@ -189,23 +168,15 @@ class EvaluationAgent:
             if y_test.dtype == "object":
                 y_test = pd.Categorical(y_test).codes
 
-            if method == "tabpfn":
-                clf = TabPFNClassifier(device=device)
-                clf.fit(X_train.values, y_train)
-                y_score = clf.predict_proba(X_test.values)[:, 1]
-                score = roc_auc_score(y_test, y_score)
-                scores.append(score)
-            elif method == "lightgbm":
-                model = LGBMClassifier(
-                    verbose=-1,
-                    random_state=self.random_state,
-                )
-                model.fit(X_train, y_train)
-                y_score = model.predict_proba(X_test)[:, 1]
-                score = roc_auc_score(y_test, y_score)
-                scores.append(score)
+            # Fit and predict using the instantiated model
+            if self.use_values:
+                self.model.fit(X_train.values, y_train)
+                y_score = self.model.predict_proba(X_test.values)[:, 1]
             else:
-                raise ValueError(f"Unknown method: {method}")
+                self.model.fit(X_train, y_train)
+                y_score = self.model.predict_proba(X_test)[:, 1]
+            score = roc_auc_score(y_test, y_score)
+            scores.append(score)
 
         return scores
 
