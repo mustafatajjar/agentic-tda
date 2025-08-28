@@ -3,12 +3,12 @@ from itertools import chain
 import numpy as np
 import os
 
-from src.agents.planner_agent import PlannerAgent, Action
-from src.agents.domain_agent import DomainAgent
-from src.agents.augment import AugmentAgent
-from src.agents.eval_agent import EvaluationAgent
-from src.utils import arff_to_dataframe, extract_arff_metadata, write_to_logs
-from src.agents.utils import prune_features_binary_classification
+from agents.planner_agent import PlannerAgent, Action
+from agents.domain_agent import DomainAgent
+from agents.augment import AugmentAgent
+from agents.eval_agent import EvaluationAgent
+from utils import arff_to_dataframe, extract_arff_metadata, write_to_logs
+from agents.utils import prune_features_binary_classification
 from sklearn.model_selection import KFold
 
 

@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from dotenv import load_dotenv
 
 
-from src.agents.tda_agent import TDAAgent
+from agents.tda_agent import TDAAgent
 
 load_dotenv()  # Load API keys
 
