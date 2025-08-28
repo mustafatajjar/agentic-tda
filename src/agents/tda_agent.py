@@ -206,7 +206,7 @@ class TDAAgent:
 
         # Test on holdout after all augmentations
         final_eval = np.mean(
-            self.evaluator.test_on_holdout_kfold_tabpfn(
+            self.evaluator.test_on_holdout_kfold(
                 df,
                 n_splits=self.n_folds,
                 device="cuda",
