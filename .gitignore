@@ -24,7 +24,7 @@ logs/
 *.log
 
 # Secrets
-*.env
+.env
 *.key
 *.pem
 
