@@ -41,6 +41,7 @@ class TDAAgent:
             label=self.target_column,
             n_folds=self.n_folds,
             test_size=self.test_size,
+            model="lightgbm"
         )
         self.df_all_augmented = self.df.copy()
         self.augment_responses = []
