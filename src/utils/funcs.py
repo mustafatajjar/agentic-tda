@@ -1,16 +1,21 @@
+import json
 import time
 import warnings
-import json
-import pandas as pd
+from datetime import datetime
+
+import arff
 import numpy as np
+import pandas as pd
 from lightgbm import LGBMClassifier
-from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-from autogluon.core.utils.feature_selection import FeatureSelector, logger
-from autogluon.core.models import AbstractModel
-from autogluon.common.utils.log_utils import set_logger_verbosity
-from sklearn.model_selection import RepeatedStratifiedKFold
+from scipy.io import arff as sparff
 from sklearn.feature_selection import SequentialFeatureSelector
+from sklearn.model_selection import RepeatedStratifiedKFold
 from tabpfn import TabPFNClassifier
+
+from autogluon.common.utils.log_utils import set_logger_verbosity
+from autogluon.core.models import AbstractModel
+from autogluon.core.utils.feature_selection import FeatureSelector, logger
+from autogluon.features.generators import AutoMLPipelineFeatureGenerator
 
 
 set_logger_verbosity(verbosity=1)
@@ -213,3 +218,112 @@ def prune_features_sfs(
     selected_features = X_enc.columns[sfs.get_support()].tolist()
 
     return selected_features
+
+
+def summarize_dataframe(df):
+    """Generate a summary of the DataFrame: dtype, uniques, missing, stats."""
+    summary = pd.DataFrame(
+        {
+            "dtype": df.dtypes,
+            "unique_count": df.nunique(),
+            "missing_values": df.isnull().sum(),
+        }
+    )
+
+    # Add unique values only for non-numeric columns
+    non_numeric_cols = df.select_dtypes(exclude="number").columns
+    summary["unique_values"] = [
+        df[col].dropna().unique().tolist() if col in non_numeric_cols else None
+        for col in df.columns
+    ]
+
+    # For numeric columns, set unique_values to "continuous values"
+    numeric_cols = df.select_dtypes(include="number").columns
+    summary.loc[numeric_cols, "unique_values"] = "continuous values"
+
+    # Add stats for numeric columns
+    summary.loc[numeric_cols, "mean"] = df[numeric_cols].mean()
+    summary.loc[numeric_cols, "min"] = df[numeric_cols].min()
+    summary.loc[numeric_cols, "max"] = df[numeric_cols].max()
+    summary.loc[numeric_cols, "std"] = df[numeric_cols].std()
+
+    return summary
+
+
+def load_arff_to_dataframe(file_path):
+    """
+    Load ARFF file into pandas DataFrame
+
+    Parameters:
+    - file_path: path to the ARFF file
+
+    Returns:
+    - pandas DataFrame
+    """
+    data, _ = sparff.loadarff(file_path)
+    df = pd.DataFrame(data)
+
+    # Decode byte strings to regular strings if needed
+    for col in df.select_dtypes([object]).columns:
+        df[col] = df[col].str.decode("utf-8")
+
+    return df
+
+
+def arff_to_dataframe(file_path):
+    """Convert ARFF to pandas DataFrame."""
+    with open(file_path, "r") as f:
+        arff_data = arff.load(f)
+    data = pd.DataFrame(
+        arff_data["data"], columns=[attr[0] for attr in arff_data["attributes"]]
+    )
+    return data
+
+
+def extract_arff_metadata(file_path):
+    """Extract metadata comments (lines starting with %) from an ARFF file."""
+    comments = []
+    with open(file_path, "r") as file:
+        for line in file:
+            if line.strip().startswith("%"):
+                comments.append(line.strip("%").strip())
+    return "\n".join(comments)
+
+
+def write_to_logs(
+    prompt: str,
+    context: str,
+    aa_prompt: str,
+    aa_response: str,
+    original_eval: float,
+    eval_before_pruning_scores: float,
+    eval_after_pruning_scores,
+):
+    filename = datetime.now().strftime("%Y%m%d_%H%M%S")
+    with open(f"outputs/run_{filename}.txt", "w") as file:
+        file.write("DA Prompt:\n")
+        file.write(prompt)
+        file.write("\n\n")
+        file.write("DA Response:\n")
+        file.write(str(context))
+        file.write("\n\n")
+
+        file.write("\n" * 4)
+
+        file.write("EA Prompt:\n")
+        file.write(aa_prompt)
+        file.write("\n\n")
+        file.write("EA Response:\n")
+        file.write(str(aa_response))
+        file.write("\n\n")
+
+        file.write("\n" * 4)
+
+        file.write("Evaluation before augmenation:\n")
+        file.write(str(original_eval))
+        file.write("\n\n")
+        file.write("Evaluation after augmentation (before pruning):\n")
+        file.write(str(np.mean(eval_before_pruning_scores)))
+        file.write("\n\n")
+        file.write("Evaluation after augmentation (after pruning):\n")
+        file.write(str(np.mean(eval_after_pruning_scores)))

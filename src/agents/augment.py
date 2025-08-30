@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from typing import Tuple
 
-from utils import summarize_dataframe
+from src.utils.funcs import summarize_dataframe
 
 load_dotenv()
 
