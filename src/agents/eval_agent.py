@@ -4,11 +4,13 @@ from sklearn.model_selection import KFold, train_test_split
 import numpy as np
 import pandas as pd
 from tabpfn import TabPFNClassifier
+from src.agents.core.agent import Agent, AgentInput, AgentOutput
+from dataclasses import dataclass
+from typing import Any, Dict 
 
 pd.set_option("mode.use_inf_as_na", True)
 
-
-class EvaluationAgent:
+class EvaluationAgent(Agent):
     def __init__(
         self,
         data,
@@ -45,6 +47,9 @@ class EvaluationAgent:
             self.use_values = True  # Use .values for TabPFN
         else:
             raise ValueError(f"Unknown model: {model}")
+
+    def run(self, input: AgentInput):
+        pass
 
     def _split_train_test_indices(self, data):
         train_idx, test_idx = train_test_split(
