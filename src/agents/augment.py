@@ -14,6 +14,7 @@ from src.utils.funcs import summarize_dataframe
 from src.agents.core.agent import Agent, AgentInput, AgentOutput
 from dataclasses import dataclass
 from typing import Dict 
+from src import logger
 
 load_dotenv()
 
@@ -36,13 +37,13 @@ class AugmentAgent(Agent):
         self.queried_relations = []
     
     def run(self, input: AgentInput):
-        agent_input = AugmentAgentInput(input.data)
+        agent_input = AugmentAgentInput(**input.data)
         """
         Adds multiple meaningful new columns to the DataFrame based on domain context.
         """
         # Prepare augmentation history string
-        history_responses = history_responses or []
-        selected_features_history = selected_features_history or []
+        history_responses = agent_input.history_responses or []
+        selected_features_history = agent_input.selected_features_history or []
         augmentation_history = []
         for i, (resp, feats) in enumerate(
             zip(history_responses, selected_features_history)
@@ -136,10 +137,28 @@ class AugmentAgent(Agent):
                     added_columns.append(col_name)
 
             self.latest_added_columns = added_columns
-            return AgentOutput(result = (augmented_df, prompt, suggestions, True))
+            
+            return AgentOutput(
+                result={
+                    "augmented_df": augmented_df,
+                    "added_columns": added_columns,
+                    "suggestions": suggestions,
+                    "success": True
+                },
+                metadata={"agent": "AugmentAgent", "prompt": prompt, "status": "success"}
+            )
         except Exception as e:
-            print(f"Failed to add columns: {str(e)}")
-            return AgentOutput(result = (agent_input.df, prompt, suggestions, False))
+            logger.debug(f"Failed to add columns: {str(e)}")
+            
+            return AgentOutput(
+                result={
+                    "augmented_df": agent_input.df,
+                    "added_columns": [],
+                    "suggestions": suggestions,
+                    "success": False
+                },
+                metadata={"agent": "AugmentAgent", "prompt": prompt, "status": "failed", "error": str(e)}
+            )
 
     # def add_column(
     #     self,

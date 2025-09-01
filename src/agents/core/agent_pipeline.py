@@ -124,6 +124,7 @@ class RoutePipeline:
 
             # Prepare input for next agent
             current_agent_name = next_agent_name
-            current_input = AgentInput(output.result, output.metadata)
+            # Pass the result as data, preserving the structure
+            current_input = AgentInput(data=output.result, metadata=output.metadata)
 
         raise RuntimeError("Pipeline exceeded max_steps (possible infinite loop)")

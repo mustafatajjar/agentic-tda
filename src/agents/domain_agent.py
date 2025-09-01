@@ -18,7 +18,7 @@ class DomainAgent(Agent):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
     def run(self, input: AgentInput):
-        agent_input = DomainAgentInput(input.data)
+        agent_input = DomainAgentInput(**input.data)
         df = agent_input.df
         arff_metadata = agent_input.arff_metadata
         prompt_path = os.path.join(
@@ -48,7 +48,13 @@ class DomainAgent(Agent):
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )
-        return AgentOutput(result=(json.loads(response.choices[0].message.content), prompt))
+        
+        domain_context = json.loads(response.choices[0].message.content)
+        
+        return AgentOutput(
+            result=domain_context,
+            metadata={"agent": "DomainAgent", "prompt": prompt, "status": "success"}
+        )
     
     # def analyze(self, df: pd.DataFrame, arff_metadata: str = "") -> Tuple[dict, str]:
     #     # Load prompt
