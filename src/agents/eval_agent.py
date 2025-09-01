@@ -41,7 +41,7 @@ class EvaluationAgent:
             )
             self.use_values = False  # Use DataFrame directly
         elif model == "tabpfn":
-            self.model = TabPFNClassifier(device="cuda")
+            self.model = TabPFNClassifier(device="cpu")
             self.use_values = True  # Use .values for TabPFN
         else:
             raise ValueError(f"Unknown model: {model}")

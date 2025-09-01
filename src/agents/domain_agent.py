@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from typing import Tuple
 
-from src.utils import summarize_dataframe
+from src.utils.funcs import summarize_dataframe
 
 
 class DomainAgent:
